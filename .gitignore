@@ -1,0 +1,10 @@
+
+.idea/
+wrisx.iml
+/data/
+/node_modules/
+/src/main/solidity/*.bin
+/src/main/solidity/*.abi
+/package-lock.json
+/commands.txt
+commands.txt
