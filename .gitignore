@@ -3,8 +3,10 @@
 wrisx.iml
 /data/
 /node_modules/
-/src/main/solidity/*.bin
-/src/main/solidity/*.abi
+**.bin
+**.abi
 /package-lock.json
 /commands.txt
 commands.txt
+/src/test/
+/commands_test.txt
