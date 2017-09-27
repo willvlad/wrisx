@@ -130,27 +130,49 @@ contract WrisxToken is owned {
     returns(string) {
         require(ind < riskKnowledgeCount);
 
-        return strConcat(riskKnowledgeTitles[ind], "|",
-        riskKnowledgeDescriptions[ind], "|",
-        riskKnowledgeLinks[ind]);
+        return strConcat(riskKnowledgeTitles[ind],
+            strConcatWithBytes("|",
+                strConcatWithBytes(riskKnowledgeDescriptions[ind],
+                    strConcatToBytes("|", riskKnowledgeLinks[ind])
+                )
+            )
+        );
     }
 
-    function strConcat(string _a, string _b, string _c, string _d, string _e) internal
+    function strConcat(string _a, bytes _bb) internal
     returns (string) {
         bytes memory _ba = bytes(_a);
-        bytes memory _bb = bytes(_b);
-        bytes memory _bc = bytes(_c);
-        bytes memory _bd = bytes(_d);
-        bytes memory _be = bytes(_e);
-        string memory abcde = new string(_ba.length + _bb.length + _bc.length + _bd.length + _be.length);
-        bytes memory babcde = bytes(abcde);
+        string memory ab = new string(_ba.length + _bb.length);
+        bytes memory bab = bytes(ab);
         uint k = 0;
-        for (uint i = 0; i < _ba.length; i++) babcde[k++] = _ba[i];
-        for (i = 0; i < _bb.length; i++) babcde[k++] = _bb[i];
-        for (i = 0; i < _bc.length; i++) babcde[k++] = _bc[i];
-        for (i = 0; i < _bd.length; i++) babcde[k++] = _bd[i];
-        for (i = 0; i < _be.length; i++) babcde[k++] = _be[i];
+        for (uint i = 0; i < _ba.length; i++) bab[k++] = _ba[i];
+        for (i = 0; i < _bb.length; i++) bab[k++] = _bb[i];
 
-        return string(babcde);
+        return string(bab);
+    }
+
+    function strConcatToBytes(string _a, string _b) internal
+    returns (bytes) {
+        bytes memory _ba = bytes(_a);
+        bytes memory _bb = bytes(_b);
+        string memory ab = new string(_ba.length + _bb.length);
+        bytes memory bab = bytes(ab);
+        uint k = 0;
+        for (uint i = 0; i < _ba.length; i++) bab[k++] = _ba[i];
+        for (i = 0; i < _bb.length; i++) bab[k++] = _bb[i];
+
+        return bab;
+    }
+
+    function strConcatWithBytes(string _a, bytes _bb) internal
+    returns (bytes) {
+        bytes memory _ba = bytes(_a);
+        string memory ab = new string(_ba.length + _bb.length);
+        bytes memory bab = bytes(ab);
+        uint k = 0;
+        for (uint i = 0; i < _ba.length; i++) bab[k++] = _ba[i];
+        for (i = 0; i < _bb.length; i++) bab[k++] = _bb[i];
+
+        return bab;
     }
 }
