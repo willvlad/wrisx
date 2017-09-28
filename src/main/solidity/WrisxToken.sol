@@ -47,7 +47,7 @@ contract WrisxToken is owned {
     mapping (uint => string) public riskKnowledgeKeyWords;
     mapping (uint => string) public riskKnowledgeDescriptions;
     mapping (uint => string) public riskKnowledgeLinks;
-    mapping (uint => uint256) public riskKnowledgeHashes;
+    mapping (uint => string) public riskKnowledgeHashes;
     mapping (uint => string) public riskKnowledgePasswords;
 
     string public name;
@@ -74,13 +74,24 @@ contract WrisxToken is owned {
         riskKnowledgeCount = 0;
     }
 
+    function () payable {
+        buyToken();
+    }
+
     function buyToken() payable {
         uint numberOfTokens = msg.value / tokenPriceEther;
+
+        require (balanceOf[owner] >= numberOfTokens);
+
         balanceOf[msg.sender] += numberOfTokens;
         balanceOf[owner] -= numberOfTokens;
     }
 
-    function getBalance(address member) constant returns(uint256 balance) {
+    function getBalance() constant returns(uint256 balance) {
+        return getMemberBalance(msg.sender);
+    }
+
+    function getMemberBalance(address member) constant returns(uint256 balance) {
         return balanceOf[member];
     }
 
@@ -106,7 +117,7 @@ contract WrisxToken is owned {
     string _keyWord,
     string _description,
     string _link,
-    uint256 _hash,
+    string _hash,
     string _password)
     returns (bool success) {
         require (riskExpertRatings[msg.sender].initialized == 1);
@@ -119,10 +130,10 @@ contract WrisxToken is owned {
         riskKnowledgeLinks[riskKnowledgeCount] = _link;
         riskKnowledgeHashes[riskKnowledgeCount] = _hash;
         riskKnowledgePasswords[riskKnowledgeCount] = _password;
-//
-//        riskKnowledgeRatings[riskKnowledgeCount].initialized = 1;
-//        riskKnowledgeRatings[riskKnowledgeCount].totalRating = 0;
-//        riskKnowledgeRatings[riskKnowledgeCount].number == 0;
+
+        riskKnowledgeRatings[riskKnowledgeCount].initialized = 1;
+        riskKnowledgeRatings[riskKnowledgeCount].totalRating = 0;
+        riskKnowledgeRatings[riskKnowledgeCount].number == 0;
 
         riskKnowledgeCount++;
 
@@ -144,7 +155,33 @@ contract WrisxToken is owned {
         return strConcat(riskKnowledgeTitles[ind],
             strConcatWithBytes("|",
                 strConcatWithBytes(riskKnowledgeDescriptions[ind],
-                    strConcatToBytes("|", riskKnowledgeLinks[ind])
+                    strConcatWithBytes("|",
+                        strConcatWithBytes(riskKnowledgeLinks[ind],
+                            strConcatToBytes("|", riskKnowledgeHashes[ind])
+                        )
+                    )
+                )
+            )
+        );
+    }
+
+
+    function buyRiskKnowledge(uint ind)
+    returns(string) {
+        require(ind < riskKnowledgeCount);
+        require(balanceOf[msg.sender] >= riskKnowledgePrices[ind]);
+
+        balanceOf[riskKnowledgeAddresses[ind]] += riskKnowledgePrices[ind];
+        balanceOf[msg.sender] -= riskKnowledgePrices[ind];
+
+        return strConcat(riskKnowledgeTitles[ind],
+            strConcatWithBytes("|",
+                strConcatWithBytes(riskKnowledgeLinks[ind],
+                    strConcatWithBytes("|",
+                        strConcatWithBytes(riskKnowledgeHashes[ind],
+                            strConcatToBytes("|", riskKnowledgePasswords[ind])
+                        )
+                    )
                 )
             )
         );
