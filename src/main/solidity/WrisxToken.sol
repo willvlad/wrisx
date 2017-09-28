@@ -54,23 +54,34 @@ contract WrisxToken is owned {
     string public symbol;
     uint8 public decimals;
     uint256 public totalSupply;
+    uint8 public tokenPriceEther;
+
     uint public riskKnowledgeCount;
 
     function WrisxToken(
     string _name,
     string _symbol,
     uint8 _decimals,
-    uint256 _totalSupply) {
+    uint256 _totalSupply,
+    uint8 _tokenPriceEther) {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
         totalSupply = _totalSupply;
         balanceOf[msg.sender] = _totalSupply;
+        tokenPriceEther = _tokenPriceEther;
+
         riskKnowledgeCount = 0;
     }
 
+    function buyToken() payable {
+        uint numberOfTokens = msg.value / tokenPriceEther;
+        balanceOf[msg.sender] += numberOfTokens;
+        balanceOf[owner] -= numberOfTokens;
+    }
+
     function getBalance(address member) constant returns(uint256 balance) {
-        return this.balanceOf(member);
+        return balanceOf[member];
     }
 
     function registerRiskExpert() returns (bool success) {
