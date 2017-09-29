@@ -1,23 +1,8 @@
 pragma solidity ^0.4.10;
 
-contract owned {
-    address public owner;
+import "mortal.sol";
 
-    function owned() {
-        owner = msg.sender;
-    }
-
-    modifier onlyOwner {
-        require(msg.sender == owner);
-        _;
-    }
-
-    function transferOwnership(address newOwner) onlyOwner {
-        owner = newOwner;
-    }
-}
-
-contract WrisxToken is owned {
+contract WrisxToken is Mortal {
 
     struct RiskKnowledge {
     address expertAddress;
