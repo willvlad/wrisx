@@ -26,7 +26,7 @@ contract WrisxToken is owned {
     string keyWord;
     string description;
     string link;
-    uint256 hash;
+    string hash;
     string password;
     Rating rating;
     bool withdrawn;
@@ -40,15 +40,7 @@ contract WrisxToken is owned {
 
     mapping (address => uint256) public balanceOf;
     mapping (address => Rating) public riskExpertRatings;
-    mapping (uint => Rating) public riskKnowledgeRatings;
-    mapping (uint => address) public riskKnowledgeAddresses;
-    mapping (uint => uint256) public riskKnowledgePrices;
-    mapping (uint => string) public riskKnowledgeTitles;
-    mapping (uint => string) public riskKnowledgeKeyWords;
-    mapping (uint => string) public riskKnowledgeDescriptions;
-    mapping (uint => string) public riskKnowledgeLinks;
-    mapping (uint => string) public riskKnowledgeHashes;
-    mapping (uint => string) public riskKnowledgePasswords;
+    mapping (uint => RiskKnowledge) riskKnowledgeArray;
 
     string public name;
     string public symbol;
@@ -122,18 +114,18 @@ contract WrisxToken is owned {
     returns (bool success) {
         require (riskExpertRatings[msg.sender].initialized == 1);
 
-        riskKnowledgeAddresses[riskKnowledgeCount] = msg.sender;
-        riskKnowledgePrices[riskKnowledgeCount] = _price;
-        riskKnowledgeTitles[riskKnowledgeCount] = _title;
-        riskKnowledgeKeyWords[riskKnowledgeCount] = _keyWord;
-        riskKnowledgeDescriptions[riskKnowledgeCount] = _description;
-        riskKnowledgeLinks[riskKnowledgeCount] = _link;
-        riskKnowledgeHashes[riskKnowledgeCount] = _hash;
-        riskKnowledgePasswords[riskKnowledgeCount] = _password;
+        riskKnowledgeArray[riskKnowledgeCount].expertAddress = msg.sender;
+        riskKnowledgeArray[riskKnowledgeCount].price = _price;
+        riskKnowledgeArray[riskKnowledgeCount].title = _title;
+        riskKnowledgeArray[riskKnowledgeCount].keyWord = _keyWord;
+        riskKnowledgeArray[riskKnowledgeCount].description = _description;
+        riskKnowledgeArray[riskKnowledgeCount].link = _link;
+        riskKnowledgeArray[riskKnowledgeCount].hash = _hash;
+        riskKnowledgeArray[riskKnowledgeCount].password = _password;
 
-        riskKnowledgeRatings[riskKnowledgeCount].initialized = 1;
-        riskKnowledgeRatings[riskKnowledgeCount].totalRating = 0;
-        riskKnowledgeRatings[riskKnowledgeCount].number == 0;
+        riskKnowledgeArray[riskKnowledgeCount].rating.initialized = 1;
+        riskKnowledgeArray[riskKnowledgeCount].rating.totalRating = 0;
+        riskKnowledgeArray[riskKnowledgeCount].rating.number == 0;
 
         riskKnowledgeCount++;
 
@@ -141,7 +133,7 @@ contract WrisxToken is owned {
     }
 
     function getRiskKnowledgeTitle(uint ind) constant returns(string title) {
-        return riskKnowledgeTitles[ind];
+        return riskKnowledgeArray[ind].title;
     }
 
     function getRiskKnowledgeCount() constant returns(uint c) {
@@ -152,12 +144,12 @@ contract WrisxToken is owned {
     returns(string) {
         require(ind < riskKnowledgeCount);
 
-        return strConcat(riskKnowledgeTitles[ind],
+        return strConcat(riskKnowledgeArray[ind].title,
             strConcatWithBytes("|",
-                strConcatWithBytes(riskKnowledgeDescriptions[ind],
+                strConcatWithBytes(riskKnowledgeArray[ind].description,
                     strConcatWithBytes("|",
-                        strConcatWithBytes(riskKnowledgeLinks[ind],
-                            strConcatToBytes("|", riskKnowledgeHashes[ind])
+                        strConcatWithBytes(riskKnowledgeArray[ind].link,
+                            strConcatToBytes("|", riskKnowledgeArray[ind].hash)
                         )
                     )
                 )
@@ -165,21 +157,20 @@ contract WrisxToken is owned {
         );
     }
 
-
     function buyRiskKnowledge(uint ind)
     returns(string) {
         require(ind < riskKnowledgeCount);
-        require(balanceOf[msg.sender] >= riskKnowledgePrices[ind]);
+        require(balanceOf[msg.sender] >= riskKnowledgeArray[ind].price);
 
-        balanceOf[riskKnowledgeAddresses[ind]] += riskKnowledgePrices[ind];
-        balanceOf[msg.sender] -= riskKnowledgePrices[ind];
+        balanceOf[riskKnowledgeArray[ind].expertAddress] += riskKnowledgeArray[ind].price;
+        balanceOf[msg.sender] -= riskKnowledgeArray[ind].price;
 
-        return strConcat(riskKnowledgeTitles[ind],
+        return strConcat(riskKnowledgeArray[ind].title,
             strConcatWithBytes("|",
-                strConcatWithBytes(riskKnowledgeLinks[ind],
+                strConcatWithBytes(riskKnowledgeArray[ind].link,
                     strConcatWithBytes("|",
-                        strConcatWithBytes(riskKnowledgeHashes[ind],
-                            strConcatToBytes("|", riskKnowledgePasswords[ind])
+                        strConcatWithBytes(riskKnowledgeArray[ind].hash,
+                            strConcatToBytes("|", riskKnowledgeArray[ind].password)
                         )
                     )
                 )

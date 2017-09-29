@@ -4,7 +4,7 @@ wrisx.iml
 /data/
 /node_modules/
 **.bin
-**.abi
+**/owned.abi
 /package-lock.json
 /commands.txt
 commands.txt
