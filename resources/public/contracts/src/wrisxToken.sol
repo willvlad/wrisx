@@ -112,7 +112,7 @@ contract WrisxToken is Mortal {
     string _link,
     string _hash,
     string _password)
-    returns (bool success) {
+    returns (uint) {
         require (riskExpertRatings[msg.sender].initialized == 1);
 
         riskKnowledgeArray[riskKnowledgeCount].expertAddress = msg.sender;
@@ -127,9 +127,11 @@ contract WrisxToken is Mortal {
         riskKnowledgeArray[riskKnowledgeCount].rating.totalRating = 0;
         riskKnowledgeArray[riskKnowledgeCount].rating.number = 0;
 
+        uint oldRiskKnowledgeCount = riskKnowledgeCount;
+
         riskKnowledgeCount++;
 
-        return true;
+        return oldRiskKnowledgeCount;
     }
 
     function getRiskKnowledgeTitle(uint ind) constant returns(string title) {
@@ -162,6 +164,17 @@ contract WrisxToken is Mortal {
         require(ind < riskKnowledgeCount);
 
         return riskKnowledgeArray[ind].price;
+    }
+
+    function getRiskKnowledgeExpert(uint ind)
+    returns(string) {
+        require(ind < riskKnowledgeCount);
+
+        address expertAddress = riskKnowledgeArray[ind].expertAddress;
+
+        return strConcat(addressToString(expertAddress),
+            strConcatToBytes("|", riskExpertRatings[expertAddress].name)
+        );
     }
 
     function buyRiskKnowledge(uint ind)
@@ -238,4 +251,12 @@ contract WrisxToken is Mortal {
 
         return bab;
     }
+
+    function addressToString(address x) returns (string) {
+        bytes memory b = new bytes(20);
+        for (uint i = 0; i < 20; i++)
+        b[i] = byte(uint8(uint(x) / (2**(8*(19 - i)))));
+        return string(b);
+    }
+
 }
