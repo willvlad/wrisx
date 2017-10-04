@@ -4,6 +4,9 @@ import "mortal.sol";
 
 contract WrisxToken is Mortal {
 
+    uint MIN_RATING = 1;
+    uint MAX_RATING = 10;
+
     struct RiskKnowledge {
     address expertAddress;
     uint256 price;
@@ -15,6 +18,7 @@ contract WrisxToken is Mortal {
     string password;
     RiskKnowledgeRating rating;
     bool withdrawn;
+    uint numberOfPurchases;
     }
 
     struct RiskExpertRating {
@@ -29,7 +33,14 @@ contract WrisxToken is Mortal {
     uint number;
     }
 
+    struct RiskKnowledgePurchase {
+    uint totalRating;
+    uint number;
+    }
+
     mapping (address => uint256) public balanceOf;
+    mapping (address => mapping (uint => bool)) public purchases;
+    mapping (address => mapping (uint => uint)) public ratings;
     mapping (address => RiskExpertRating) public riskExpertRatings;
     mapping (uint => RiskKnowledge) riskKnowledgeArray;
 
@@ -177,13 +188,20 @@ contract WrisxToken is Mortal {
         );
     }
 
-    function buyRiskKnowledge(uint ind)
-    returns(string) {
+    function payForRiskKnowledge(uint ind) {
         require(ind < riskKnowledgeCount);
         require(balanceOf[msg.sender] >= riskKnowledgeArray[ind].price);
 
         balanceOf[riskKnowledgeArray[ind].expertAddress] += riskKnowledgeArray[ind].price;
         balanceOf[msg.sender] -= riskKnowledgeArray[ind].price;
+        purchases[msg.sender][ind] = true;
+    }
+
+    function getRiskKnowledge(uint ind)
+    returns(string) {
+        require(ind < riskKnowledgeCount);
+        require(balanceOf[msg.sender] >= riskKnowledgeArray[ind].price);
+        require(purchases[msg.sender][ind] == true);
 
         return strConcat(riskKnowledgeArray[ind].title,
             strConcatWithBytes("|",
