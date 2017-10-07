@@ -11,26 +11,34 @@ contract WrisxToken is Mortal {
     address expertAddress;
     uint256 price;
     string title;
-    string keyWord;
+    string keyWords;
     string description;
     string link;
     string hash;
     string password;
-    RiskKnowledgeRating rating;
+    RatingData ratingData;
     bool withdrawn;
     uint numberOfPurchases;
     }
 
-    struct RiskExpertRating {
+    struct RiskExpert {
     string name;
+    mapping (uint => RatingData) riskKnowledgeRatings;
     uint totalRating;
     uint number;
     uint initialized;
     }
 
-    struct RiskKnowledgeRating {
+    struct RatingData {
     uint totalRating;
     uint number;
+    mapping (address => Rating) ratings;
+    }
+
+    struct Rating {
+    uint rating;
+    string comment;
+    bool done;
     }
 
     struct RiskKnowledgePurchase {
@@ -38,10 +46,14 @@ contract WrisxToken is Mortal {
     uint number;
     }
 
-    mapping (address => uint256) public balanceOf;
-    mapping (address => mapping (uint => bool)) public purchases;
-    mapping (address => mapping (uint => uint)) public ratings;
-    mapping (address => RiskExpertRating) public riskExpertRatings;
+    struct MemberData {
+    uint256 balance;
+    mapping (uint => bool) purchases;
+    mapping (uint => Rating) ratings;
+    }
+
+    mapping (address => MemberData) public members;
+    mapping (address => RiskExpert) public riskExperts;
     mapping (uint => RiskKnowledge) riskKnowledgeArray;
 
     string public name;
@@ -62,7 +74,7 @@ contract WrisxToken is Mortal {
         symbol = _symbol;
         decimals = _decimals;
         totalSupply = _totalSupply;
-        balanceOf[msg.sender] = _totalSupply;
+        members[msg.sender].balance = _totalSupply;
         tokenPriceEther = _tokenPriceEther;
 
         riskKnowledgeCount = 0;
@@ -75,10 +87,10 @@ contract WrisxToken is Mortal {
     function buyToken() payable {
         uint numberOfTokens = msg.value / tokenPriceEther;
 
-        require (balanceOf[owner] >= numberOfTokens);
+        require (members[owner].balance >= numberOfTokens);
 
-        balanceOf[msg.sender] += numberOfTokens;
-        balanceOf[owner] -= numberOfTokens;
+        members[msg.sender].balance += numberOfTokens;
+        members[owner].balance -= numberOfTokens;
     }
 
     function getBalance() constant returns(uint256 balance) {
@@ -86,57 +98,57 @@ contract WrisxToken is Mortal {
     }
 
     function getMemberBalance(address member) constant returns(uint256 balance) {
-        return balanceOf[member];
+        return members[member].balance;
     }
 
     function registerRiskExpert(string _name) returns (bool success) {
-        require (riskExpertRatings[msg.sender].initialized == 0);
+        require (riskExperts[msg.sender].initialized == 0);
 
-        riskExpertRatings[msg.sender].initialized = 1;
-        riskExpertRatings[msg.sender].name = _name;
+        riskExperts[msg.sender].initialized = 1;
+        riskExperts[msg.sender].name = _name;
 
         return true;
     }
 
     function getExpertInitialized(address expertAddress) constant returns(uint init) {
-        return riskExpertRatings[expertAddress].initialized;
+        return riskExperts[expertAddress].initialized;
     }
 
     function getExpertTotalRating(address expertAddress) constant returns(uint totalRating) {
-        require (riskExpertRatings[expertAddress].initialized == 1);
+        require (riskExperts[expertAddress].initialized == 1);
 
-        return riskExpertRatings[expertAddress].totalRating;
+        return riskExperts[expertAddress].totalRating;
     }
 
     function getExpertRating(address expertAddress)
     returns(uint256) {
-        require (riskExpertRatings[expertAddress].initialized == 1);
+        require (riskExperts[expertAddress].initialized == 1);
 
-        return riskExpertRatings[expertAddress].totalRating / riskExpertRatings[expertAddress].number;
+        return riskExperts[expertAddress].totalRating / riskExperts[expertAddress].number;
     }
 
     function depositRiskKnowledge(
     uint256 _price,
     string _title,
-    string _keyWord,
+    string _keyWords,
     string _description,
     string _link,
     string _hash,
     string _password)
     returns (uint) {
-        require (riskExpertRatings[msg.sender].initialized == 1);
+        require (riskExperts[msg.sender].initialized == 1);
 
         riskKnowledgeArray[riskKnowledgeCount].expertAddress = msg.sender;
         riskKnowledgeArray[riskKnowledgeCount].price = _price;
         riskKnowledgeArray[riskKnowledgeCount].title = _title;
-        riskKnowledgeArray[riskKnowledgeCount].keyWord = _keyWord;
+        riskKnowledgeArray[riskKnowledgeCount].keyWords = _keyWords;
         riskKnowledgeArray[riskKnowledgeCount].description = _description;
         riskKnowledgeArray[riskKnowledgeCount].link = _link;
         riskKnowledgeArray[riskKnowledgeCount].hash = _hash;
         riskKnowledgeArray[riskKnowledgeCount].password = _password;
 
-        riskKnowledgeArray[riskKnowledgeCount].rating.totalRating = 0;
-        riskKnowledgeArray[riskKnowledgeCount].rating.number = 0;
+        riskKnowledgeArray[riskKnowledgeCount].ratingData.totalRating = 0;
+        riskKnowledgeArray[riskKnowledgeCount].ratingData.number = 0;
 
         uint oldRiskKnowledgeCount = riskKnowledgeCount;
 
@@ -184,24 +196,24 @@ contract WrisxToken is Mortal {
         address expertAddress = riskKnowledgeArray[ind].expertAddress;
 
         return strConcat(addressToString(expertAddress),
-            strConcatToBytes("|", riskExpertRatings[expertAddress].name)
+            strConcatToBytes("|", riskExperts[expertAddress].name)
         );
     }
 
     function payForRiskKnowledge(uint ind) {
         require(ind < riskKnowledgeCount);
-        require(balanceOf[msg.sender] >= riskKnowledgeArray[ind].price);
+        require(members[msg.sender].balance >= riskKnowledgeArray[ind].price);
 
-        balanceOf[riskKnowledgeArray[ind].expertAddress] += riskKnowledgeArray[ind].price;
-        balanceOf[msg.sender] -= riskKnowledgeArray[ind].price;
-        purchases[msg.sender][ind] = true;
+        members[riskKnowledgeArray[ind].expertAddress].balance += riskKnowledgeArray[ind].price;
+        members[msg.sender].balance -= riskKnowledgeArray[ind].price;
+        members[msg.sender].purchases[ind] = true;
     }
 
     function getRiskKnowledge(uint ind)
     returns(string) {
         require(ind < riskKnowledgeCount);
-        require(balanceOf[msg.sender] >= riskKnowledgeArray[ind].price);
-        require(purchases[msg.sender][ind] == true);
+        require(members[msg.sender].balance >= riskKnowledgeArray[ind].price);
+        require(members[msg.sender].purchases[ind] == true);
 
         return strConcat(riskKnowledgeArray[ind].title,
             strConcatWithBytes("|",
@@ -220,8 +232,8 @@ contract WrisxToken is Mortal {
     returns(bool) {
         require(ind < riskKnowledgeCount);
 
-        riskKnowledgeArray[ind].rating.totalRating += rate;
-        riskKnowledgeArray[ind].rating.number++;
+        riskKnowledgeArray[ind].ratingData.totalRating += rate;
+        riskKnowledgeArray[ind].ratingData.number++;
 
         return true;
     }
@@ -230,7 +242,8 @@ contract WrisxToken is Mortal {
     returns(uint256) {
         require(ind < riskKnowledgeCount);
 
-        return riskKnowledgeArray[ind].rating.totalRating / riskKnowledgeArray[ind].rating.number;
+        return riskKnowledgeArray[ind].ratingData.totalRating /
+                        riskKnowledgeArray[ind].ratingData.number;
     }
 
     function strConcat(string _a, bytes _bb) internal
