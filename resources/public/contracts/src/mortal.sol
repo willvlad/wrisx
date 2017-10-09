@@ -1,9 +1,9 @@
-pragma solidity ^0.4.10;
+pragma solidity ^0.4.17;
 
-import "owned.sol";
+import "./owned.sol";
 
 contract Mortal is Owned {
-    function kill() {
+    function kill() public {
         if (msg.sender == owner)
             selfdestruct(owner);
     }

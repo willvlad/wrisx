@@ -1,17 +1,17 @@
-pragma solidity ^0.4.8;
+pragma solidity ^0.4.17;
 
 contract Owned {
   address public owner = msg.sender;
 
   modifier onlyOwner {
-    if (msg.sender != owner) throw;
+    if (msg.sender != owner) revert();
     _;
   }
 
-  function changeOwner(address _newOwner)
+  function changeOwner(address _newOwner) public
   onlyOwner
   {
-    if(_newOwner == 0x0) throw;
+    if(_newOwner == 0x0) revert();
     owner = _newOwner;
   }
 }

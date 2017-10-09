@@ -1,8 +1,17 @@
-pragma solidity ^0.4.10;
+pragma solidity ^0.4.17;
 
-import "mortal.sol";
+import "./mortal.sol";
 
 contract WrisxToken is Mortal {
+    event onRiskExpertRegistered(address indexed expert, string name);
+    event onTokensBought(address indexed member, uint tokens);
+    event onRiskKnowledgeDeposited(address indexed expert, uint indexed ind);
+    event onRiskKnowledgeWithdrawn(address indexed expert, uint indexed ind);
+    event onRiskKnowledgePaid(address indexed member, uint indexed ind);
+    event onRiskKnowledgeSent(address indexed member, uint indexed ind);
+    event onRiskKnowledgeRated(address indexed member, uint indexed ind, uint rate);
+
+    address public owner = msg.sender;
 
     uint MIN_RATING = 1;
     uint MAX_RATING = 10;
@@ -69,7 +78,7 @@ contract WrisxToken is Mortal {
     string _symbol,
     uint8 _decimals,
     uint256 _totalSupply,
-    uint8 _tokenPriceEther) {
+    uint8 _tokenPriceEther) public {
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
@@ -80,47 +89,51 @@ contract WrisxToken is Mortal {
         riskKnowledgeCount = 0;
     }
 
-    function () payable {
-        buyToken();
+    function () public payable {
+
     }
 
-    function buyToken() payable {
+    function buyTokens() public payable {
         uint numberOfTokens = msg.value / tokenPriceEther;
 
         require (members[owner].balance >= numberOfTokens);
 
         members[msg.sender].balance += numberOfTokens;
         members[owner].balance -= numberOfTokens;
+
+        onTokensBought(msg.sender, numberOfTokens);
     }
 
-    function getBalance() constant returns(uint256 balance) {
+    function getBalance() public constant returns(uint256 balance) {
         return getMemberBalance(msg.sender);
     }
 
-    function getMemberBalance(address member) constant returns(uint256 balance) {
+    function getMemberBalance(address member) public constant returns(uint256 balance) {
         return members[member].balance;
     }
 
-    function registerRiskExpert(string _name) returns (bool success) {
+    function registerRiskExpert(string _name) public returns (bool success) {
         require (riskExperts[msg.sender].initialized == 0);
 
         riskExperts[msg.sender].initialized = 1;
         riskExperts[msg.sender].name = _name;
 
+        onRiskExpertRegistered(msg.sender, _name);
+
         return true;
     }
 
-    function getExpertInitialized(address expertAddress) constant returns(uint init) {
+    function getExpertInitialized(address expertAddress) public constant returns(uint init) {
         return riskExperts[expertAddress].initialized;
     }
 
-    function getExpertTotalRating(address expertAddress) constant returns(uint totalRating) {
+    function getExpertTotalRating(address expertAddress) public constant returns(uint totalRating) {
         require (riskExperts[expertAddress].initialized == 1);
 
         return riskExperts[expertAddress].totalRating;
     }
 
-    function getExpertRating(address expertAddress)
+    function getExpertRating(address expertAddress) public constant
     returns(uint256) {
         require (riskExperts[expertAddress].initialized == 1);
 
@@ -134,7 +147,7 @@ contract WrisxToken is Mortal {
     string _description,
     string _link,
     string _hash,
-    string _password)
+    string _password) public
     returns (uint) {
         require (riskExperts[msg.sender].initialized == 1);
 
@@ -154,18 +167,27 @@ contract WrisxToken is Mortal {
 
         riskKnowledgeCount++;
 
+        onRiskKnowledgeDeposited(msg.sender, oldRiskKnowledgeCount);
+
         return oldRiskKnowledgeCount;
     }
 
-    function getRiskKnowledgeTitle(uint ind) constant returns(string title) {
+    function withdrawRiskKnowledge(uint ind) public
+    returns (bool) {
+        require (riskExperts[msg.sender].initialized == 1);
+
+        onRiskKnowledgeWithdrawn(msg.sender, ind);
+    }
+
+    function getRiskKnowledgeTitle(uint ind) public constant returns(string title) {
         return riskKnowledgeArray[ind].title;
     }
 
-    function getRiskKnowledgeCount() constant returns(uint c) {
+    function getRiskKnowledgeCount() public constant returns(uint c) {
         return riskKnowledgeCount;
     }
 
-    function requestRiskKnowledge(uint ind)
+    function requestRiskKnowledge(uint ind) public
     returns(string) {
         require(ind < riskKnowledgeCount);
 
@@ -182,14 +204,14 @@ contract WrisxToken is Mortal {
         );
     }
 
-    function getRiskKnowledgePrice(uint ind)
+    function getRiskKnowledgePrice(uint ind) public constant
     returns(uint256) {
         require(ind < riskKnowledgeCount);
 
         return riskKnowledgeArray[ind].price;
     }
 
-    function getRiskKnowledgeExpert(uint ind)
+    function getRiskKnowledgeExpert(uint ind) public
     returns(string) {
         require(ind < riskKnowledgeCount);
 
@@ -200,20 +222,24 @@ contract WrisxToken is Mortal {
         );
     }
 
-    function payForRiskKnowledge(uint ind) {
+    function payForRiskKnowledge(uint ind) public {
         require(ind < riskKnowledgeCount);
         require(members[msg.sender].balance >= riskKnowledgeArray[ind].price);
 
         members[riskKnowledgeArray[ind].expertAddress].balance += riskKnowledgeArray[ind].price;
         members[msg.sender].balance -= riskKnowledgeArray[ind].price;
         members[msg.sender].purchases[ind] = true;
+
+        onRiskKnowledgePaid(msg.sender, ind);
     }
 
-    function getRiskKnowledge(uint ind)
+    function getRiskKnowledge(uint ind) public
     returns(string) {
         require(ind < riskKnowledgeCount);
         require(members[msg.sender].balance >= riskKnowledgeArray[ind].price);
         require(members[msg.sender].purchases[ind] == true);
+
+        onRiskKnowledgeSent(msg.sender, ind);
 
         return strConcat(riskKnowledgeArray[ind].title,
             strConcatWithBytes("|",
@@ -228,17 +254,19 @@ contract WrisxToken is Mortal {
         );
     }
 
-    function rateRiskKnowledge(uint ind, uint rate)
+    function rateRiskKnowledge(uint ind, uint rate) public
     returns(bool) {
         require(ind < riskKnowledgeCount);
 
         riskKnowledgeArray[ind].ratingData.totalRating += rate;
         riskKnowledgeArray[ind].ratingData.number++;
 
+        onRiskKnowledgeRated(msg.sender, ind, rate);
+
         return true;
     }
 
-    function getRiskKnowledgeRating(uint ind)
+    function getRiskKnowledgeRating(uint ind) public constant
     returns(uint256) {
         require(ind < riskKnowledgeCount);
 
@@ -283,7 +311,7 @@ contract WrisxToken is Mortal {
         return bab;
     }
 
-    function addressToString(address x) returns (string) {
+    function addressToString(address x) internal returns (string) {
         bytes memory b = new bytes(20);
         for (uint i = 0; i < 20; i++)
         b[i] = byte(uint8(uint(x) / (2**(8*(19 - i)))));
