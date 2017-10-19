@@ -5,11 +5,11 @@ import "./mortal.sol";
 contract WrisxToken is Mortal {
     event onRiskExpertRegistered(address indexed expert, string name);
     event onTokensBought(address indexed member, uint tokens);
-    event onRiskKnowledgeDeposited(address indexed expert, string indexed fileName);
-    event onRiskKnowledgeWithdrawn(address indexed expert, string indexed fileName);
-    event onRiskKnowledgePaid(address indexed member, string indexed fileName);
-    event onRiskKnowledgeSent(address indexed member, string indexed fileName);
-    event onRiskKnowledgeRated(address indexed member, string indexed fileName, uint rate);
+    event onRiskKnowledgeDeposited(address indexed expert, string indexed uuid);
+    event onRiskKnowledgeWithdrawn(address indexed expert, string indexed uuid);
+    event onRiskKnowledgePaid(address indexed member, string indexed uuid);
+    event onRiskKnowledgeSent(address indexed member, string indexed uuid);
+    event onRiskKnowledgeRated(address indexed member, string indexed uuid, uint rate);
 
     address public owner = msg.sender;
 
@@ -141,7 +141,7 @@ contract WrisxToken is Mortal {
 
     function depositRiskKnowledge(
     uint256 _price,
-    string _fileName,
+    string _uuid,
     string _password,
     string _fileChecksumMD5,
     string _fileChecksumSHA1,
@@ -150,39 +150,39 @@ contract WrisxToken is Mortal {
     returns (string) {
         require (riskExperts[msg.sender].initialized == 1);
 
-        riskKnowledges[_fileName].expertAddress = msg.sender;
-        riskKnowledges[_fileName].price = _price;
-        riskKnowledges[_fileName].password = _password;
-        riskKnowledges[_fileName].fileChecksumMD5 = _fileChecksumMD5;
-        riskKnowledges[_fileName].fileChecksumSHA1 = _fileChecksumSHA1;
-        riskKnowledges[_fileName].zipFileChecksumMD5 = _zipFileChecksumMD5;
-        riskKnowledges[_fileName].zipFileChecksumSHA1 = _zipFileChecksumSHA1;
+        riskKnowledges[_uuid].expertAddress = msg.sender;
+        riskKnowledges[_uuid].price = _price;
+        riskKnowledges[_uuid].password = _password;
+        riskKnowledges[_uuid].fileChecksumMD5 = _fileChecksumMD5;
+        riskKnowledges[_uuid].fileChecksumSHA1 = _fileChecksumSHA1;
+        riskKnowledges[_uuid].zipFileChecksumMD5 = _zipFileChecksumMD5;
+        riskKnowledges[_uuid].zipFileChecksumSHA1 = _zipFileChecksumSHA1;
 
-        riskKnowledges[_fileName].ratingData.totalRating = 0;
-        riskKnowledges[_fileName].ratingData.number = 0;
+        riskKnowledges[_uuid].ratingData.totalRating = 0;
+        riskKnowledges[_uuid].ratingData.number = 0;
 
-        onRiskKnowledgeDeposited(msg.sender, _fileName);
+        onRiskKnowledgeDeposited(msg.sender, _uuid);
 
-        return _fileName;
+        return _uuid;
     }
 
-    function withdrawRiskKnowledge(string fileName) public
+    function withdrawRiskKnowledge(string uuid) public
     returns (bool) {
         require (riskExperts[msg.sender].initialized == 1);
 
         // TODO
 
-        onRiskKnowledgeWithdrawn(msg.sender, fileName);
+        onRiskKnowledgeWithdrawn(msg.sender, uuid);
     }
 
-    function requestRiskKnowledge(string fileName) public
+    function requestRiskKnowledge(string uuid) public
     returns(string) {
-        return strConcat(riskKnowledges[fileName].fileChecksumMD5,
+        return strConcat(riskKnowledges[uuid].fileChecksumMD5,
             strConcatWithBytes("|",
-                strConcatWithBytes(riskKnowledges[fileName].fileChecksumSHA1,
+                strConcatWithBytes(riskKnowledges[uuid].fileChecksumSHA1,
                     strConcatWithBytes("|",
-                        strConcatWithBytes(riskKnowledges[fileName].zipFileChecksumMD5,
-                            strConcatToBytes("|", riskKnowledges[fileName].zipFileChecksumSHA1)
+                        strConcatWithBytes(riskKnowledges[uuid].zipFileChecksumMD5,
+                            strConcatToBytes("|", riskKnowledges[uuid].zipFileChecksumSHA1)
                         )
                     )
                 )
@@ -190,54 +190,54 @@ contract WrisxToken is Mortal {
         );
     }
 
-    function getRiskKnowledgePrice(string fileName) public constant
+    function getRiskKnowledgePrice(string uuid) public constant
     returns(uint256) {
-        return riskKnowledges[fileName].price;
+        return riskKnowledges[uuid].price;
     }
 
-    function getRiskKnowledgeExpert(string fileName) public
+    function getRiskKnowledgeExpert(string uuid) public
     returns(string) {
-        address expertAddress = riskKnowledges[fileName].expertAddress;
+        address expertAddress = riskKnowledges[uuid].expertAddress;
 
         return strConcat(addressToString(expertAddress),
             strConcatToBytes("|", riskExperts[expertAddress].name)
         );
     }
 
-    function payForRiskKnowledge(string fileName) public {
-        require(members[msg.sender].balance >= riskKnowledges[fileName].price);
+    function payForRiskKnowledge(string uuid) public {
+        require(members[msg.sender].balance >= riskKnowledges[uuid].price);
 
-        members[riskKnowledges[fileName].expertAddress].balance += riskKnowledges[fileName].price;
-        members[msg.sender].balance -= riskKnowledges[fileName].price;
-        members[msg.sender].purchases[fileName] = true;
+        members[riskKnowledges[uuid].expertAddress].balance += riskKnowledges[uuid].price;
+        members[msg.sender].balance -= riskKnowledges[uuid].price;
+        members[msg.sender].purchases[uuid] = true;
 
-        onRiskKnowledgePaid(msg.sender, fileName);
+        onRiskKnowledgePaid(msg.sender, uuid);
     }
 
-    function getRiskKnowledge(string fileName) public
+    function getRiskKnowledge(string uuid) public
     returns(string) {
-        require(members[msg.sender].balance >= riskKnowledges[fileName].price);
-        require(members[msg.sender].purchases[fileName] == true);
+        require(members[msg.sender].balance >= riskKnowledges[uuid].price);
+        require(members[msg.sender].purchases[uuid] == true);
 
-        onRiskKnowledgeSent(msg.sender, fileName);
+        onRiskKnowledgeSent(msg.sender, uuid);
 
-        return riskKnowledges[fileName].password;
+        return riskKnowledges[uuid].password;
     }
 
-    function rateRiskKnowledge(string fileName, uint rate) public
+    function rateRiskKnowledge(string uuid, uint rate) public
     returns(bool) {
-        riskKnowledges[fileName].ratingData.totalRating += rate;
-        riskKnowledges[fileName].ratingData.number++;
+        riskKnowledges[uuid].ratingData.totalRating += rate;
+        riskKnowledges[uuid].ratingData.number++;
 
-        onRiskKnowledgeRated(msg.sender, fileName, rate);
+        onRiskKnowledgeRated(msg.sender, uuid, rate);
 
         return true;
     }
 
-    function getRiskKnowledgeRating(string fileName) public constant
+    function getRiskKnowledgeRating(string uuid) public constant
     returns(uint256) {
-        return riskKnowledges[fileName].ratingData.totalRating /
-        riskKnowledges[fileName].ratingData.number;
+        return riskKnowledges[uuid].ratingData.totalRating /
+        riskKnowledges[uuid].ratingData.number;
     }
 
     function strConcat(string _a, bytes _bb) internal
