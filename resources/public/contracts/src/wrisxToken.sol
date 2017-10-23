@@ -20,10 +20,7 @@ contract WrisxToken is Mortal {
     address expertAddress;
     uint256 price;
     string password;
-    string fileChecksumMD5;
-    string fileChecksumSHA1;
     string zipFileChecksumMD5;
-    string zipFileChecksumSHA1;
     RatingData ratingData;
     bool withdrawn;
     uint numberOfPurchases;
@@ -103,6 +100,10 @@ contract WrisxToken is Mortal {
         onTokensBought(msg.sender, numberOfTokens);
     }
 
+    function getTokenPrice() public constant returns (uint8) {
+        return tokenPriceEther;
+    }
+
     function getBalance() public constant returns(uint256 balance) {
         return getMemberBalance(msg.sender);
     }
@@ -143,20 +144,14 @@ contract WrisxToken is Mortal {
     uint256 _price,
     string _uuid,
     string _password,
-    string _fileChecksumMD5,
-    string _fileChecksumSHA1,
-    string _zipFileChecksumMD5,
-    string _zipFileChecksumSHA1) public
+    string _zipFileChecksumMD5) public
     returns (string) {
         require (riskExperts[msg.sender].initialized == 1);
 
         riskKnowledgeItems[_uuid].expertAddress = msg.sender;
         riskKnowledgeItems[_uuid].price = _price;
         riskKnowledgeItems[_uuid].password = _password;
-        riskKnowledgeItems[_uuid].fileChecksumMD5 = _fileChecksumMD5;
-        riskKnowledgeItems[_uuid].fileChecksumSHA1 = _fileChecksumSHA1;
         riskKnowledgeItems[_uuid].zipFileChecksumMD5 = _zipFileChecksumMD5;
-        riskKnowledgeItems[_uuid].zipFileChecksumSHA1 = _zipFileChecksumSHA1;
 
         riskKnowledgeItems[_uuid].ratingData.totalRating = 0;
         riskKnowledgeItems[_uuid].ratingData.number = 0;
@@ -179,17 +174,7 @@ contract WrisxToken is Mortal {
 
     function requestRiskKnowledge(string uuid) public
     returns(string) {
-        return strConcat(riskKnowledgeItems[uuid].fileChecksumMD5,
-            strConcatWithBytes("|",
-                strConcatWithBytes(riskKnowledgeItems[uuid].fileChecksumSHA1,
-                    strConcatWithBytes("|",
-                        strConcatWithBytes(riskKnowledgeItems[uuid].zipFileChecksumMD5,
-                            strConcatToBytes("|", riskKnowledgeItems[uuid].zipFileChecksumSHA1)
-                        )
-                    )
-                )
-            )
-        );
+        return riskKnowledgeItems[uuid].zipFileChecksumMD5;
     }
 
     function getRiskKnowledgePrice(string uuid) public constant
