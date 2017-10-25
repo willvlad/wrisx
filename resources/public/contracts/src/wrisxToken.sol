@@ -7,9 +7,12 @@ contract WrisxToken is Mortal {
     event onTokensBought(address indexed member, uint tokens);
     event onRiskKnowledgeDeposited(address indexed expert, string indexed uuid);
     event onRiskKnowledgeWithdrawn(address indexed expert, string indexed uuid);
-    event onRiskKnowledgePaid(address indexed member, string indexed uuid);
-    event onRiskKnowledgeSent(address indexed member, string indexed uuid);
-    event onRiskKnowledgeRated(address indexed member, string indexed uuid, uint rate);
+    event onRiskKnowledgePaid(address indexed client, string indexed uuid);
+    event onOrderPlaced(address indexed client, uint indexed orderId);
+    event onExpertChosen(uint indexed orderId, address indexed expert, uint256 price);
+    event onOrderExecuted(uint indexed orderId, string indexed riskKnowledgeUuid);
+    event onRiskKnowledgeSent(address indexed client, string indexed uuid);
+    event onRiskKnowledgeRated(address indexed client, string indexed uuid, uint rate);
 
     address public owner = msg.sender;
 
@@ -51,13 +54,23 @@ contract WrisxToken is Mortal {
     uint number;
     }
 
-    struct MemberData {
+    struct ClientData {
     uint256 balance;
     mapping (string => bool) purchases;
     mapping (string => Rating) ratings;
+    mapping (uint => OrderData) orders;
     }
 
-    mapping (address => MemberData) public members;
+    struct OrderData {
+    string keywords;
+    bool chosen;
+    address expert;
+    uint256 price;
+    bool executed;
+    string riskKnowledgeUuid;
+    }
+
+    mapping (address => ClientData) public clients;
     mapping (address => RiskExpert) public riskExperts;
     mapping (string => RiskKnowledge) riskKnowledgeItems;
 
@@ -79,7 +92,7 @@ contract WrisxToken is Mortal {
         symbol = _symbol;
         decimals = _decimals;
         totalSupply = _totalSupply;
-        members[msg.sender].balance = _totalSupply;
+        clients[msg.sender].balance = _totalSupply;
         tokenPriceEther = _tokenPriceEther;
 
         riskKnowledgeCount = 0;
@@ -92,10 +105,10 @@ contract WrisxToken is Mortal {
     function buyTokens() public payable {
         uint numberOfTokens = msg.value / tokenPriceEther;
 
-        require (members[owner].balance >= numberOfTokens);
+        require (clients[owner].balance >= numberOfTokens);
 
-        members[msg.sender].balance += numberOfTokens;
-        members[owner].balance -= numberOfTokens;
+        clients[msg.sender].balance += numberOfTokens;
+        clients[owner].balance -= numberOfTokens;
 
         onTokensBought(msg.sender, numberOfTokens);
     }
@@ -109,7 +122,7 @@ contract WrisxToken is Mortal {
     }
 
     function getMemberBalance(address member) public constant returns(uint256 balance) {
-        return members[member].balance;
+        return clients[member].balance;
     }
 
     function registerRiskExpert(string _name) public returns (bool success) {
@@ -191,20 +204,66 @@ contract WrisxToken is Mortal {
         );
     }
 
-    function payForRiskKnowledge(string uuid) public {
-        require(members[msg.sender].balance >= riskKnowledgeItems[uuid].price);
+    function placeOrder(
+    uint _id,
+    string _keywords) public
+    returns (bool) {
+        clients[msg.sender].orders[_id].keywords = _keywords;
+        clients[msg.sender].orders[_id].price = 0;
+        clients[msg.sender].orders[_id].chosen = false;
+        clients[msg.sender].orders[_id].executed = false;
 
-        members[riskKnowledgeItems[uuid].expertAddress].balance += riskKnowledgeItems[uuid].price;
-        members[msg.sender].balance -= riskKnowledgeItems[uuid].price;
-        members[msg.sender].purchases[uuid] = true;
+        onOrderPlaced(msg.sender, _id);
+
+        return true;
+    }
+
+    function chooseOrderExpert(
+    uint _id,
+    address _expert,
+    uint256 _price) public
+    returns (bool) {
+        require(clients[msg.sender].orders[_id].chosen == false);
+
+        clients[msg.sender].orders[_id].expert = _expert;
+        clients[msg.sender].orders[_id].price = _price;
+        clients[msg.sender].orders[_id].chosen = true;
+
+        onExpertChosen(_id, _expert, _price);
+
+        return true;
+    }
+
+    function executeOrder(
+    uint _id,
+    string _riskKnowledgeUuid) public
+    returns (bool) {
+        require(clients[msg.sender].orders[_id].chosen == true);
+        require(clients[msg.sender].orders[_id].executed == false);
+        require(clients[msg.sender].orders[_id].expert == msg.sender);
+
+        clients[msg.sender].orders[_id].riskKnowledgeUuid = _riskKnowledgeUuid;
+        clients[msg.sender].orders[_id].executed = true;
+
+        onOrderExecuted(_id, _riskKnowledgeUuid);
+
+        return true;
+    }
+
+    function payForRiskKnowledge(string uuid) public {
+        require(clients[msg.sender].balance >= riskKnowledgeItems[uuid].price);
+
+        clients[riskKnowledgeItems[uuid].expertAddress].balance += riskKnowledgeItems[uuid].price;
+        clients[msg.sender].balance -= riskKnowledgeItems[uuid].price;
+        clients[msg.sender].purchases[uuid] = true;
 
         onRiskKnowledgePaid(msg.sender, uuid);
     }
 
     function getRiskKnowledge(string uuid) public
     returns(string) {
-        require(members[msg.sender].balance >= riskKnowledgeItems[uuid].price);
-        require(members[msg.sender].purchases[uuid] == true);
+        require(clients[msg.sender].balance >= riskKnowledgeItems[uuid].price);
+        require(clients[msg.sender].purchases[uuid] == true);
 
         onRiskKnowledgeSent(msg.sender, uuid);
 
