@@ -8,9 +8,9 @@ contract WrisxToken is Mortal {
     event onRiskKnowledgeDeposited(address indexed expert, string indexed uuid);
     event onRiskKnowledgeWithdrawn(address indexed expert, string indexed uuid);
     event onRiskKnowledgePaid(address indexed client, string indexed uuid);
-    event onOrderPlaced(address indexed client, uint indexed orderId);
-    event onExpertChosen(uint indexed orderId, address indexed expert, uint256 price);
-    event onOrderExecuted(uint indexed orderId, string indexed riskKnowledgeUuid);
+    event onEnquiryPlaced(address indexed client, uint indexed enquiryId);
+    event onExpertChosen(uint indexed enquiryId, address indexed expert, uint256 price);
+    event onEnquiryExecuted(uint indexed enquiryId, string indexed riskKnowledgeUuid);
     event onRiskKnowledgeSent(address indexed client, string indexed uuid);
     event onRiskKnowledgeRated(address indexed client, string indexed uuid, uint rate);
 
@@ -58,10 +58,10 @@ contract WrisxToken is Mortal {
     uint256 balance;
     mapping (string => bool) purchases;
     mapping (string => Rating) ratings;
-    mapping (uint => OrderData) orders;
+    mapping (uint => EnquiryData) enquiries;
     }
 
-    struct OrderData {
+    struct EnquiryData {
     string keywords;
     bool chosen;
     address expert;
@@ -204,48 +204,48 @@ contract WrisxToken is Mortal {
         );
     }
 
-    function placeOrder(
+    function placeEnquiry(
     uint _id,
     string _keywords) public
     returns (bool) {
-        clients[msg.sender].orders[_id].keywords = _keywords;
-        clients[msg.sender].orders[_id].price = 0;
-        clients[msg.sender].orders[_id].chosen = false;
-        clients[msg.sender].orders[_id].executed = false;
+        clients[msg.sender].enquiries[_id].keywords = _keywords;
+        clients[msg.sender].enquiries[_id].price = 0;
+        clients[msg.sender].enquiries[_id].chosen = false;
+        clients[msg.sender].enquiries[_id].executed = false;
 
-        onOrderPlaced(msg.sender, _id);
+        onEnquiryPlaced(msg.sender, _id);
 
         return true;
     }
 
-    function chooseOrderExpert(
+    function chooseEnquiryExpert(
     uint _id,
     address _expert,
     uint256 _price) public
     returns (bool) {
-        require(clients[msg.sender].orders[_id].chosen == false);
+        require(clients[msg.sender].enquiries[_id].chosen == false);
 
-        clients[msg.sender].orders[_id].expert = _expert;
-        clients[msg.sender].orders[_id].price = _price;
-        clients[msg.sender].orders[_id].chosen = true;
+        clients[msg.sender].enquiries[_id].expert = _expert;
+        clients[msg.sender].enquiries[_id].price = _price;
+        clients[msg.sender].enquiries[_id].chosen = true;
 
         onExpertChosen(_id, _expert, _price);
 
         return true;
     }
 
-    function executeOrder(
+    function executeEnquiry(
     uint _id,
     string _riskKnowledgeUuid) public
     returns (bool) {
-        require(clients[msg.sender].orders[_id].chosen == true);
-        require(clients[msg.sender].orders[_id].executed == false);
-        require(clients[msg.sender].orders[_id].expert == msg.sender);
+        require(clients[msg.sender].enquiries[_id].chosen == true);
+        require(clients[msg.sender].enquiries[_id].executed == false);
+        require(clients[msg.sender].enquiries[_id].expert == msg.sender);
 
-        clients[msg.sender].orders[_id].riskKnowledgeUuid = _riskKnowledgeUuid;
-        clients[msg.sender].orders[_id].executed = true;
+        clients[msg.sender].enquiries[_id].riskKnowledgeUuid = _riskKnowledgeUuid;
+        clients[msg.sender].enquiries[_id].executed = true;
 
-        onOrderExecuted(_id, _riskKnowledgeUuid);
+        onEnquiryExecuted(_id, _riskKnowledgeUuid);
 
         return true;
     }
