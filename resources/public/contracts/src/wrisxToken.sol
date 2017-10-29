@@ -68,7 +68,7 @@ contract WrisxToken is Mortal {
     }
 
     struct Rating {
-    uint rating;
+    uint rate;
     string comment;
     uint done;
     }
@@ -222,6 +222,7 @@ contract WrisxToken is Mortal {
     returns (string) {
         require(riskKnowledgeItems[_uuid].deposited == 0);
         require(riskExperts[msg.sender].initialized == 1);
+        require(users[msg.sender].initialized == 1);
 
         riskKnowledgeItems[_uuid].expertAddress = msg.sender;
         riskKnowledgeItems[_uuid].price = _price;
@@ -250,6 +251,13 @@ contract WrisxToken is Mortal {
 
             users[msg.sender].balance += clients[_clientAddress].enquiries[_enquiryId].bids[_bidId].price;
             escrowBalance -= clients[_clientAddress].enquiries[_enquiryId].bids[_bidId].price;
+            clients[_clientAddress].purchases[_uuid] = true;
+
+            riskKnowledgeItems[_uuid].numberOfPurchases = 1;
+
+            onBidExecuted(_bidId, _uuid);
+        } else {
+            riskKnowledgeItems[_uuid].numberOfPurchases = 0;
         }
 
         onRiskKnowledgeDeposited(msg.sender, _uuid);
@@ -320,10 +328,13 @@ contract WrisxToken is Mortal {
     }
 
     function payForRiskKnowledge(string _uuid) public {
+        require(clients[msg.sender].initialized == 1);
         require(users[msg.sender].balance >= riskKnowledgeItems[_uuid].price);
+        require(riskKnowledgeItems[_uuid].deposited == 1);
 
         users[riskKnowledgeItems[_uuid].expertAddress].balance += riskKnowledgeItems[_uuid].price;
         users[msg.sender].balance -= riskKnowledgeItems[_uuid].price;
+        riskKnowledgeItems[_uuid].numberOfPurchases += 1;
         clients[msg.sender].purchases[_uuid] = true;
 
         onRiskKnowledgePaid(msg.sender, _uuid);
@@ -339,10 +350,11 @@ contract WrisxToken is Mortal {
         return riskKnowledgeItems[_uuid].password;
     }
 
-    function rateRiskKnowledgeByClient(string _uuid, uint _rate) public
+    function rateRiskKnowledgeByClient(string _uuid, uint _rate, string _comment) public
     returns(bool) {
         require(clients[msg.sender].initialized == 1);
         require(riskKnowledgeItems[_uuid].deposited == 1);
+        require(riskKnowledgeItems[_uuid].ratingData.clientRatings[msg.sender].done == 0);
         require(_rate <= MAX_RATING);
         require(_rate >= MIN_RATING);
 
@@ -351,15 +363,20 @@ contract WrisxToken is Mortal {
         riskExperts[riskKnowledgeItems[_uuid].expertAddress].totalRating + _rate;
         riskExperts[riskKnowledgeItems[_uuid].expertAddress].number++;
 
+        riskKnowledgeItems[_uuid].ratingData.clientRatings[msg.sender].done = 1;
+        riskKnowledgeItems[_uuid].ratingData.clientRatings[msg.sender].rate = _rate;
+        riskKnowledgeItems[_uuid].ratingData.clientRatings[msg.sender].comment = _comment;
+
         onRiskKnowledgeRatedByClient(msg.sender, _uuid, _rate);
 
         return true;
     }
 
-    function rateRiskKnowledgeByFacilitator(string _uuid, uint _rate) public
+    function rateRiskKnowledgeByFacilitator(string _uuid, uint _rate, string _comment) public
     returns(bool) {
         require(facilitators[msg.sender].initialized == 1);
         require(riskKnowledgeItems[_uuid].deposited == 1);
+        require(riskKnowledgeItems[_uuid].ratingData.facilitatorRatings[msg.sender].done == 0);
         require(_rate <= MAX_RATING);
         require(_rate >= MIN_RATING);
 
@@ -367,6 +384,10 @@ contract WrisxToken is Mortal {
         riskKnowledgeItems[_uuid].ratingData.numberOfFacilitators++;
         riskExperts[riskKnowledgeItems[_uuid].expertAddress].totalRating + _rate;
         riskExperts[riskKnowledgeItems[_uuid].expertAddress].number++;
+
+        riskKnowledgeItems[_uuid].ratingData.facilitatorRatings[msg.sender].done = 1;
+        riskKnowledgeItems[_uuid].ratingData.facilitatorRatings[msg.sender].rate = _rate;
+        riskKnowledgeItems[_uuid].ratingData.facilitatorRatings[msg.sender].comment = _comment;
 
         onRiskKnowledgeRatedByFacilitator(msg.sender, _uuid, _rate);
 
@@ -421,7 +442,7 @@ contract WrisxToken is Mortal {
         }
     }
 
-    function strConcat(string _a, bytes _bb) internal
+    function strConcat(string _a, bytes _bb) internal constant
     returns (string) {
         bytes memory _ba = bytes(_a);
         string memory ab = new string(_ba.length + _bb.length);
@@ -433,7 +454,7 @@ contract WrisxToken is Mortal {
         return string(bab);
     }
 
-    function strConcatToBytes(string _a, string _b) internal
+    function strConcatToBytes(string _a, string _b) internal constant
     returns (bytes) {
         bytes memory _ba = bytes(_a);
         bytes memory _bb = bytes(_b);
@@ -446,7 +467,7 @@ contract WrisxToken is Mortal {
         return bab;
     }
 
-    function strConcatWithBytes(string _a, bytes _bb) internal
+    function strConcatWithBytes(string _a, bytes _bb) internal constant
     returns (bytes) {
         bytes memory _ba = bytes(_a);
         string memory ab = new string(_ba.length + _bb.length);
@@ -458,14 +479,14 @@ contract WrisxToken is Mortal {
         return bab;
     }
 
-    function addressToString(address x) internal returns (string) {
+    function addressToString(address x) internal constant returns (string) {
         bytes memory b = new bytes(20);
         for (uint i = 0; i < 20; i++)
         b[i] = byte(uint8(uint(x) / (2**(8*(19 - i)))));
         return string(b);
     }
 
-    function stringToUint(string s) constant returns (uint result) {
+    function stringToUint(string s) internal constant returns (uint result) {
         bytes memory b = bytes(s);
         uint i;
         result = 0;
