@@ -130,8 +130,10 @@ contract WrisxToken is Mortal {
     }
 
     function buyTokens() public payable {
-        uint numberOfTokens = msg.value / tokenPriceEther;
+        require(users[msg.sender].initialized == 1);
+        require(clients[msg.sender].initialized == 1);
 
+        uint numberOfTokens = msg.value / tokenPriceEther;
         require (users[owner].balance >= numberOfTokens);
 
         users[msg.sender].balance += numberOfTokens;
@@ -153,7 +155,7 @@ contract WrisxToken is Mortal {
     }
 
     function registerRiskExpert(string _name) public returns (bool success) {
-        require (riskExperts[msg.sender].initialized == 0);
+        require(riskExperts[msg.sender].initialized == 0);
 
         riskExperts[msg.sender].initialized = 1;
         registerUser(msg.sender, _name);
@@ -164,7 +166,7 @@ contract WrisxToken is Mortal {
     }
 
     function registerClient(string _name) public returns (bool success) {
-        require (clients[msg.sender].initialized == 0);
+        require(clients[msg.sender].initialized == 0);
 
         clients[msg.sender].initialized = 1;
         registerUser(msg.sender, _name);
@@ -175,7 +177,7 @@ contract WrisxToken is Mortal {
     }
 
     function registerFacilitator(string _name) public returns (bool success) {
-        require (facilitators[msg.sender].initialized == 0);
+        require(facilitators[msg.sender].initialized == 0);
 
         facilitators[msg.sender].initialized = 1;
         registerUser(msg.sender, _name);
@@ -300,27 +302,33 @@ contract WrisxToken is Mortal {
         );
     }
 
-    function placeEnquiry(
+    function placeEnquiryBid(
     uint _enquiryId,
     string _keywords,
-    uint _bidId0,
-    address _expert0,
-    uint256 _price0,
-    uint _bidId1,
-    address _expert1,
-    uint256 _price1,
-    uint _bidId2,
-    address _expert2,
-    uint256 _price2) public
+    uint _bidId,
+    address _expert,
+    uint256 _price) public
     returns (bool) {
+        require(_price > 0);
+        require(users[msg.sender].initialized == 1);
         require(clients[msg.sender].initialized == 1);
-        require(clients[msg.sender].enquiries[_enquiryId].initialized == 0);
+        require(users[msg.sender].balance >= _price);
+        require(clients[msg.sender].enquiries[_enquiryId].bids[_bidId].initialized == 0);
 
-        clients[msg.sender].enquiries[_enquiryId].keywords = _keywords;
-        clients[msg.sender].enquiries[_enquiryId].initialized = 1;
-        addBid(msg.sender, _enquiryId, _bidId0, _expert0, _price0);
-        addBid(msg.sender, _enquiryId, _bidId1, _expert1, _price1);
-        addBid(msg.sender, _enquiryId, _bidId2, _expert2, _price2);
+        if (clients[msg.sender].enquiries[_enquiryId].initialized == 0) {
+            clients[msg.sender].enquiries[_enquiryId].keywords = _keywords;
+            clients[msg.sender].enquiries[_enquiryId].initialized = 1;
+        }
+
+        clients[msg.sender].enquiries[_enquiryId].bids[_bidId].expert = _expert;
+        clients[msg.sender].enquiries[_enquiryId].bids[_bidId].price = _price;
+        clients[msg.sender].enquiries[_enquiryId].bids[_bidId].executed = 0;
+        clients[msg.sender].enquiries[_enquiryId].bids[_bidId].initialized = 1;
+        clients[msg.sender].enquiries[_enquiryId].bids[_bidId].timedout = 0;
+        escrowBalance += _price;
+        users[msg.sender].balance -= _price;
+
+        onBidPlaced(_enquiryId, _bidId, _expert, _price);
 
         onEnquiryPlaced(msg.sender, _enquiryId);
 
@@ -423,23 +431,6 @@ contract WrisxToken is Mortal {
             users[_addr].name = _name;
         }
         users[_addr].initialized = 1;
-    }
-
-    function addBid(address _addr, uint _enquiryId, uint _bidId, address _expert, uint256 _price) internal {
-        if (_bidId > 0) {
-            require (users[_addr].balance >= _price);
-            require (clients[_addr].enquiries[_enquiryId].bids[_bidId].initialized == 0);
-
-            clients[_addr].enquiries[_enquiryId].bids[_bidId].expert = _expert;
-            clients[_addr].enquiries[_enquiryId].bids[_bidId].price = _price;
-            clients[_addr].enquiries[_enquiryId].bids[_bidId].executed = 0;
-            clients[_addr].enquiries[_enquiryId].bids[_bidId].initialized = 1;
-            clients[_addr].enquiries[_enquiryId].bids[_bidId].timedout = 0;
-            escrowBalance += _price;
-            users[_addr].balance -= _price;
-
-            onBidPlaced(_enquiryId, _bidId, _expert, _price);
-        }
     }
 
     function strConcat(string _a, bytes _bb) internal constant
