@@ -1,28 +1,43 @@
 pragma solidity ^0.4.17;
 
-import "./mortal.sol";
+contract WrisxToken {
+    address public owner = msg.sender;
 
-contract WrisxToken is Mortal {
-    event onRiskExpertRegistered(address indexed addr, string name);
+    modifier onlyOwner {
+        if (msg.sender != owner) revert();
+        _;
+    }
+
+    function changeOwner(address _newOwner) public
+    onlyOwner
+    {
+        if(_newOwner == 0x0) revert();
+        owner = _newOwner;
+    }
+
+    function kill() public {
+        if (msg.sender == owner)
+        selfdestruct(owner);
+    }
+
+    event onExpertRegistered(address indexed addr, string name);
     event onClientRegistered(address indexed addr, string name);
     event onFacilitatorRegistered(address indexed addr, string name);
     event onTokensBought(address indexed member, uint tokens);
-    event onRiskKnowledgeDeposited(address indexed expert, string indexed uuid);
-    event onRiskKnowledgeWithdrawn(address indexed expert, string indexed uuid);
-    event onRiskKnowledgePaid(address indexed client, string indexed uuid);
+    event onResearchDeposited(address indexed expert, string indexed uuid);
+    event onResearchWithdrawn(address indexed expert, string indexed uuid);
+    event onResearchPaid(address indexed client, string indexed uuid);
     event onEnquiryPlaced(address indexed client, uint indexed enquiryId);
     event onBidPlaced(uint indexed enquiryId, uint indexed bidId, address indexed expert, uint price);
-    event onBidExecuted(uint indexed bidId, string indexed riskKnowledgeUuid);
-    event onRiskKnowledgeSent(address indexed client, string indexed uuid);
-    event onRiskKnowledgeRatedByClient(address indexed client, string indexed uuid, uint rate);
-    event onRiskKnowledgeRatedByFacilitator(address indexed client, string indexed uuid, uint rate);
-
-    address public owner = msg.sender;
+    event onBidExecuted(uint indexed bidId, string indexed researchUuid);
+    event onResearchSent(address indexed client, string indexed uuid);
+    event onResearchRatedByClient(address indexed client, string indexed uuid, uint rate);
+    event onResearchRatedByFacilitator(address indexed client, string indexed uuid, uint rate);
 
     uint MIN_RATING = 1;
     uint MAX_RATING = 10;
 
-    struct RiskKnowledge {
+    struct Research {
     address expertAddress;
     uint256 price;
     string password;
@@ -46,8 +61,8 @@ contract WrisxToken is Mortal {
     uint initialized;
     }
 
-    struct RiskExpert {
-    mapping (string => RiskKnowledge) riskKnowledgeItems;
+    struct Expert {
+    mapping (string => Research) researchItems;
     uint totalRating;
     uint number;
     uint initialized;
@@ -73,7 +88,7 @@ contract WrisxToken is Mortal {
     uint done;
     }
 
-    struct RiskKnowledgePurchase {
+    struct ResearchPurchase {
     uint totalRating;
     uint number;
     }
@@ -90,14 +105,14 @@ contract WrisxToken is Mortal {
     uint initialized;
     uint executed;
     uint timedout;
-    string riskKnowledgeUuid;
+    string researchUuid;
     }
 
     mapping (address => UserData) public users;
     mapping (address => ClientData) public clients;
-    mapping (address => RiskExpert) public riskExperts;
+    mapping (address => Expert) public experts;
     mapping (address => Facilitator) public facilitators;
-    mapping (string => RiskKnowledge) riskKnowledgeItems;
+    mapping (string => Research) researchItems;
 
     string public name;
     string public symbol;
@@ -106,7 +121,7 @@ contract WrisxToken is Mortal {
     uint256 public escrowBalance;
     uint8 public tokenPriceEther;
 
-    uint public riskKnowledgeCount;
+    uint public researchCount;
 
     function WrisxToken(
     string _name,
@@ -121,7 +136,7 @@ contract WrisxToken is Mortal {
         users[msg.sender].balance = _totalSupply;
         tokenPriceEther = _tokenPriceEther;
 
-        riskKnowledgeCount = 0;
+        researchCount = 0;
         escrowBalance = 0;
     }
 
@@ -154,13 +169,13 @@ contract WrisxToken is Mortal {
         return users[member].balance;
     }
 
-    function registerRiskExpert(string _name) public returns (bool success) {
-        require(riskExperts[msg.sender].initialized == 0);
+    function registerExpert(string _name) public returns (bool success) {
+        require(experts[msg.sender].initialized == 0);
 
-        riskExperts[msg.sender].initialized = 1;
+        experts[msg.sender].initialized = 1;
         registerUser(msg.sender, _name);
 
-        onRiskExpertRegistered(msg.sender, _name);
+        onExpertRegistered(msg.sender, _name);
 
         return true;
     }
@@ -188,7 +203,7 @@ contract WrisxToken is Mortal {
     }
 
     function getExpertInitialized(address addr) public constant returns(uint init) {
-        return riskExperts[addr].initialized;
+        return experts[addr].initialized;
     }
 
     function getClientInitialized(address addr) public constant returns(uint init) {
@@ -200,19 +215,19 @@ contract WrisxToken is Mortal {
     }
 
     function getExpertTotalRating(address expertAddress) public constant returns(uint totalRating) {
-        require (riskExperts[expertAddress].initialized == 1);
+        require (experts[expertAddress].initialized == 1);
 
-        return riskExperts[expertAddress].totalRating;
+        return experts[expertAddress].totalRating;
     }
 
     function getExpertRating(address expertAddress) public constant
     returns(uint256) {
-        require (riskExperts[expertAddress].initialized == 1);
+        require (experts[expertAddress].initialized == 1);
 
-        return riskExperts[expertAddress].totalRating / riskExperts[expertAddress].number;
+        return experts[expertAddress].totalRating / experts[expertAddress].number;
     }
 
-    function depositRiskKnowledge(
+    function depositResearch(
     uint256 _price,
     string _uuid,
     string _password,
@@ -222,23 +237,23 @@ contract WrisxToken is Mortal {
     uint _enquiryId,
     uint _bidId) public
     returns (string) {
-        require(riskKnowledgeItems[_uuid].deposited == 0);
-        require(riskExperts[msg.sender].initialized == 1);
+        require(researchItems[_uuid].deposited == 0);
+        require(experts[msg.sender].initialized == 1);
         require(users[msg.sender].initialized == 1);
 
-        riskKnowledgeItems[_uuid].expertAddress = msg.sender;
-        riskKnowledgeItems[_uuid].price = _price;
-        riskKnowledgeItems[_uuid].password = _password;
-        riskKnowledgeItems[_uuid].zipFileChecksumMD5 = _zipFileChecksumMD5;
-        riskKnowledgeItems[_uuid].deposited = 1;
-        riskKnowledgeItems[_uuid].withdrawn = 0;
+        researchItems[_uuid].expertAddress = msg.sender;
+        researchItems[_uuid].price = _price;
+        researchItems[_uuid].password = _password;
+        researchItems[_uuid].zipFileChecksumMD5 = _zipFileChecksumMD5;
+        researchItems[_uuid].deposited = 1;
+        researchItems[_uuid].withdrawn = 0;
 
-        riskKnowledgeItems[_uuid].ratingData.totalRatingByClient = 0;
-        riskKnowledgeItems[_uuid].ratingData.numberOfClients = 0;
-        riskKnowledgeItems[_uuid].ratingData.totalRatingByFacilitator = 0;
-        riskKnowledgeItems[_uuid].ratingData.numberOfFacilitators = 0;
+        researchItems[_uuid].ratingData.totalRatingByClient = 0;
+        researchItems[_uuid].ratingData.numberOfClients = 0;
+        researchItems[_uuid].ratingData.totalRatingByFacilitator = 0;
+        researchItems[_uuid].ratingData.numberOfFacilitators = 0;
 
-        riskExperts[msg.sender].riskKnowledgeItems[_uuid] = riskKnowledgeItems[_uuid];
+        experts[msg.sender].researchItems[_uuid] = researchItems[_uuid];
 
         if (_bidId > 0) {
             require(users[_clientAddress].initialized == 1);
@@ -248,54 +263,54 @@ contract WrisxToken is Mortal {
             require(clients[_clientAddress].enquiries[_enquiryId].bids[_bidId].executed == 0);
             require(clients[_clientAddress].enquiries[_enquiryId].bids[_bidId].timedout == 0);
 
-            clients[_clientAddress].enquiries[_enquiryId].bids[_bidId].riskKnowledgeUuid = _uuid;
+            clients[_clientAddress].enquiries[_enquiryId].bids[_bidId].researchUuid = _uuid;
             clients[_clientAddress].enquiries[_enquiryId].bids[_bidId].executed = 1;
 
             users[msg.sender].balance += clients[_clientAddress].enquiries[_enquiryId].bids[_bidId].price;
             escrowBalance -= clients[_clientAddress].enquiries[_enquiryId].bids[_bidId].price;
             clients[_clientAddress].purchases[_uuid] = true;
 
-            riskKnowledgeItems[_uuid].numberOfPurchases = 1;
+            researchItems[_uuid].numberOfPurchases = 1;
 
             onBidExecuted(_bidId, _uuid);
         } else {
-            riskKnowledgeItems[_uuid].numberOfPurchases = 0;
+            researchItems[_uuid].numberOfPurchases = 0;
         }
 
-        onRiskKnowledgeDeposited(msg.sender, _uuid);
+        onResearchDeposited(msg.sender, _uuid);
 
         return _uuid;
     }
 
-    function withdrawRiskKnowledge(string uuid) public
+    function withdrawResearch(string uuid) public
     returns (bool) {
-        require(riskKnowledgeItems[uuid].expertAddress == msg.sender);
-        require(riskExperts[msg.sender].initialized == 1);
+        require(researchItems[uuid].expertAddress == msg.sender);
+        require(experts[msg.sender].initialized == 1);
 
         // TODO
 
-        onRiskKnowledgeWithdrawn(msg.sender, uuid);
+        onResearchWithdrawn(msg.sender, uuid);
     }
 
-    function requestRiskKnowledge(string uuid) public
+    function requestResearch(string uuid) public
     returns(string) {
-        require(riskKnowledgeItems[uuid].deposited == 1);
+        require(researchItems[uuid].deposited == 1);
 
-        return riskKnowledgeItems[uuid].zipFileChecksumMD5;
+        return researchItems[uuid].zipFileChecksumMD5;
     }
 
-    function getRiskKnowledgePrice(string uuid) public constant
+    function getResearchPrice(string uuid) public constant
     returns(uint256) {
-        require(riskKnowledgeItems[uuid].deposited == 1);
+        require(researchItems[uuid].deposited == 1);
 
-        return riskKnowledgeItems[uuid].price;
+        return researchItems[uuid].price;
     }
 
-    function getRiskKnowledgeExpert(string uuid) public
+    function getResearchExpert(string uuid) public
     returns(string) {
-        require(riskKnowledgeItems[uuid].deposited == 1);
+        require(researchItems[uuid].deposited == 1);
 
-        address expertAddress = riskKnowledgeItems[uuid].expertAddress;
+        address expertAddress = researchItems[uuid].expertAddress;
 
         return strConcat(addressToString(expertAddress),
             strConcatToBytes("|", users[expertAddress].name)
@@ -329,95 +344,95 @@ contract WrisxToken is Mortal {
         return true;
     }
 
-    function payForRiskKnowledge(string _uuid) public {
+    function payForResearch(string _uuid) public {
         require(clients[msg.sender].initialized == 1);
-        require(users[msg.sender].balance >= riskKnowledgeItems[_uuid].price);
-        require(riskKnowledgeItems[_uuid].deposited == 1);
+        require(users[msg.sender].balance >= researchItems[_uuid].price);
+        require(researchItems[_uuid].deposited == 1);
 
-        users[riskKnowledgeItems[_uuid].expertAddress].balance += riskKnowledgeItems[_uuid].price;
-        users[msg.sender].balance -= riskKnowledgeItems[_uuid].price;
-        riskKnowledgeItems[_uuid].numberOfPurchases += 1;
+        users[researchItems[_uuid].expertAddress].balance += researchItems[_uuid].price;
+        users[msg.sender].balance -= researchItems[_uuid].price;
+        researchItems[_uuid].numberOfPurchases += 1;
         clients[msg.sender].purchases[_uuid] = true;
 
-        onRiskKnowledgePaid(msg.sender, _uuid);
+        onResearchPaid(msg.sender, _uuid);
     }
 
-    function getRiskKnowledge(string _uuid) public
+    function getResearch(string _uuid) public
     returns(string) {
-        require(users[msg.sender].balance >= riskKnowledgeItems[_uuid].price);
+        require(users[msg.sender].balance >= researchItems[_uuid].price);
         require(clients[msg.sender].purchases[_uuid] == true);
 
-        onRiskKnowledgeSent(msg.sender, _uuid);
+        onResearchSent(msg.sender, _uuid);
 
-        return riskKnowledgeItems[_uuid].password;
+        return researchItems[_uuid].password;
     }
 
-    function rateRiskKnowledgeByClient(string _uuid, uint _rate, string _comment) public
+    function rateResearchByClient(string _uuid, uint _rate, string _comment) public
     returns(bool) {
         require(clients[msg.sender].initialized == 1);
-        require(riskKnowledgeItems[_uuid].deposited == 1);
-        require(riskKnowledgeItems[_uuid].ratingData.clientRatings[msg.sender].done == 0);
+        require(researchItems[_uuid].deposited == 1);
+        require(researchItems[_uuid].ratingData.clientRatings[msg.sender].done == 0);
         require(_rate <= MAX_RATING);
         require(_rate >= MIN_RATING);
 
-        riskKnowledgeItems[_uuid].ratingData.totalRatingByClient += _rate;
-        riskKnowledgeItems[_uuid].ratingData.numberOfClients++;
-        riskExperts[riskKnowledgeItems[_uuid].expertAddress].totalRating + _rate;
-        riskExperts[riskKnowledgeItems[_uuid].expertAddress].number++;
+        researchItems[_uuid].ratingData.totalRatingByClient += _rate;
+        researchItems[_uuid].ratingData.numberOfClients++;
+        experts[researchItems[_uuid].expertAddress].totalRating + _rate;
+        experts[researchItems[_uuid].expertAddress].number++;
 
-        riskKnowledgeItems[_uuid].ratingData.clientRatings[msg.sender].done = 1;
-        riskKnowledgeItems[_uuid].ratingData.clientRatings[msg.sender].rate = _rate;
-        riskKnowledgeItems[_uuid].ratingData.clientRatings[msg.sender].comment = _comment;
+        researchItems[_uuid].ratingData.clientRatings[msg.sender].done = 1;
+        researchItems[_uuid].ratingData.clientRatings[msg.sender].rate = _rate;
+        researchItems[_uuid].ratingData.clientRatings[msg.sender].comment = _comment;
 
-        onRiskKnowledgeRatedByClient(msg.sender, _uuid, _rate);
+        onResearchRatedByClient(msg.sender, _uuid, _rate);
 
         return true;
     }
 
-    function rateRiskKnowledgeByFacilitator(string _uuid, uint _rate, string _comment) public
+    function rateResearchByFacilitator(string _uuid, uint _rate, string _comment) public
     returns(bool) {
         require(facilitators[msg.sender].initialized == 1);
-        require(riskKnowledgeItems[_uuid].deposited == 1);
-        require(riskKnowledgeItems[_uuid].ratingData.facilitatorRatings[msg.sender].done == 0);
+        require(researchItems[_uuid].deposited == 1);
+        require(researchItems[_uuid].ratingData.facilitatorRatings[msg.sender].done == 0);
         require(_rate <= MAX_RATING);
         require(_rate >= MIN_RATING);
 
-        riskKnowledgeItems[_uuid].ratingData.totalRatingByFacilitator += _rate;
-        riskKnowledgeItems[_uuid].ratingData.numberOfFacilitators++;
-        riskExperts[riskKnowledgeItems[_uuid].expertAddress].totalRating + _rate;
-        riskExperts[riskKnowledgeItems[_uuid].expertAddress].number++;
+        researchItems[_uuid].ratingData.totalRatingByFacilitator += _rate;
+        researchItems[_uuid].ratingData.numberOfFacilitators++;
+        experts[researchItems[_uuid].expertAddress].totalRating + _rate;
+        experts[researchItems[_uuid].expertAddress].number++;
 
-        riskKnowledgeItems[_uuid].ratingData.facilitatorRatings[msg.sender].done = 1;
-        riskKnowledgeItems[_uuid].ratingData.facilitatorRatings[msg.sender].rate = _rate;
-        riskKnowledgeItems[_uuid].ratingData.facilitatorRatings[msg.sender].comment = _comment;
+        researchItems[_uuid].ratingData.facilitatorRatings[msg.sender].done = 1;
+        researchItems[_uuid].ratingData.facilitatorRatings[msg.sender].rate = _rate;
+        researchItems[_uuid].ratingData.facilitatorRatings[msg.sender].comment = _comment;
 
-        onRiskKnowledgeRatedByFacilitator(msg.sender, _uuid, _rate);
+        onResearchRatedByFacilitator(msg.sender, _uuid, _rate);
 
         return true;
     }
 
-    function getRiskKnowledgeRatingByClient(string _uuid) public constant
+    function getResearchRatingByClient(string _uuid) public constant
     returns(uint256) {
-        require(riskKnowledgeItems[_uuid].deposited == 1);
+        require(researchItems[_uuid].deposited == 1);
 
-        if (riskKnowledgeItems[_uuid].ratingData.numberOfClients == 0) {
+        if (researchItems[_uuid].ratingData.numberOfClients == 0) {
             return 0;
         }
 
-        return riskKnowledgeItems[_uuid].ratingData.totalRatingByClient /
-        riskKnowledgeItems[_uuid].ratingData.numberOfClients;
+        return researchItems[_uuid].ratingData.totalRatingByClient /
+        researchItems[_uuid].ratingData.numberOfClients;
     }
 
-    function getRiskKnowledgeRatingByFacilitator(string _uuid) public constant
+    function getResearchRatingByFacilitator(string _uuid) public constant
     returns(uint256) {
-        require(riskKnowledgeItems[_uuid].deposited == 1);
+        require(researchItems[_uuid].deposited == 1);
 
-        if (riskKnowledgeItems[_uuid].ratingData.numberOfFacilitators == 0) {
+        if (researchItems[_uuid].ratingData.numberOfFacilitators == 0) {
             return 0;
         }
 
-        return riskKnowledgeItems[_uuid].ratingData.totalRatingByFacilitator /
-        riskKnowledgeItems[_uuid].ratingData.numberOfFacilitators;
+        return researchItems[_uuid].ratingData.totalRatingByFacilitator /
+        researchItems[_uuid].ratingData.numberOfFacilitators;
     }
 
     function registerUser(address _addr, string _name) internal {
