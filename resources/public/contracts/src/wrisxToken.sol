@@ -359,7 +359,6 @@ contract WrisxToken {
 
     function getResearch(string _uuid) public
     returns(string) {
-        require(users[msg.sender].balance >= researchItems[_uuid].price);
         require(clients[msg.sender].purchases[_uuid] == true);
 
         onResearchSent(msg.sender, _uuid);
