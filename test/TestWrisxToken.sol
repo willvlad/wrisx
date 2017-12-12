@@ -23,4 +23,3 @@ contract TestWrisxToken {
         Assert.equal(returned, expected, "Total supply should be 10000");
     }
 }
-
