@@ -2,6 +2,7 @@
 .idea/
 wrisx.iml
 /data/
+/build/
 /node_modules/
 **.bin
 **/owned.abi
@@ -10,3 +11,5 @@ wrisx.iml
 commands.txt
 /src/test/
 /commands_test.txt
+.rinkeby/
+*.pdf

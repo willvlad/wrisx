@@ -20,19 +20,20 @@ contract WrisxToken {
         selfdestruct(owner);
     }
 
-    event onExpertRegistered(address indexed addr, string name);
-    event onClientRegistered(address indexed addr, string name);
-    event onFacilitatorRegistered(address indexed addr, string name);
-    event onTokensBought(address indexed member, uint tokens);
-    event onResearchDeposited(address indexed expert, string indexed uuid);
-    event onResearchWithdrawn(address indexed expert, string indexed uuid);
-    event onResearchPaid(address indexed client, string indexed uuid);
-    event onEnquiryPlaced(address indexed client, uint indexed enquiryId);
-    event onBidPlaced(uint indexed enquiryId, uint indexed bidId, address indexed expert, uint price);
-    event onBidExecuted(uint indexed bidId, string indexed researchUuid);
-    event onResearchSent(address indexed client, string indexed uuid);
-    event onResearchRatedByClient(address indexed client, string indexed uuid, uint rate);
-    event onResearchRatedByFacilitator(address indexed client, string indexed uuid, uint rate);
+    event ExpertRegistered(address indexed addr, string name);
+    event ClientRegistered(address indexed addr, string name);
+    event FacilitatorRegistered(address indexed addr, string name);
+    event TokensBought(address indexed member, uint tokens);
+    event ResearchDeposited(address indexed expert, string indexed uuid);
+    event ResearchWithdrawn(address indexed expert, string indexed uuid);
+    event ResearchPaid(address indexed client, string indexed uuid);
+    event EnquiryPlaced(address indexed client, uint indexed enquiryId);
+    event BidPlaced(uint indexed enquiryId, uint indexed bidId, address indexed expert, uint price);
+    event BidExecuted(uint indexed bidId, string indexed researchUuid);
+    event ResearchSent(address indexed client, string indexed uuid);
+    event ResearchRatedByClient(address indexed client, string indexed uuid, uint rate);
+    event ResearchRatedByFacilitator(address indexed client, string indexed uuid, uint rate);
+    event Transfer(address indexed _from, address indexed _to, uint256 _value);
 
     uint MIN_RATING = 1;
     uint MAX_RATING = 10;
@@ -144,6 +145,14 @@ contract WrisxToken {
 
     }
 
+    function getOwner() public constant returns (address) {
+        return owner;
+    }
+
+    function totalSupply() public constant returns (uint _totalSupply) {
+        return totalSupply;
+    }
+
     function buyTokens() public payable {
         require(users[msg.sender].initialized == 1);
         require(clients[msg.sender].initialized == 1);
@@ -154,7 +163,7 @@ contract WrisxToken {
         users[msg.sender].balance += numberOfTokens;
         users[owner].balance -= numberOfTokens;
 
-        onTokensBought(msg.sender, numberOfTokens);
+        TokensBought(msg.sender, numberOfTokens);
     }
 
     function getTokenPrice() public constant returns (uint8) {
@@ -162,11 +171,24 @@ contract WrisxToken {
     }
 
     function getBalance() public constant returns(uint256 balance) {
-        return getMemberBalance(msg.sender);
+        return balanceOf(msg.sender);
     }
 
-    function getMemberBalance(address member) public constant returns(uint256 balance) {
-        return users[member].balance;
+    function balanceOf(address _owner) public constant returns(uint256 balance) {
+        return users[_owner].balance;
+    }
+
+    function transfer(address _to, uint256 _amount) public returns (bool success) {
+        if (users[msg.sender].balance >= _amount
+            && _amount > 0
+            && users[_to].balance + _amount > users[_to].balance) {
+            users[msg.sender].balance -= _amount;
+            users[_to].balance += _amount;
+            Transfer(msg.sender, _to, _amount);
+            return true;
+        } else {
+            return false;
+        }
     }
 
     function registerExpert(string _name) public returns (bool success) {
@@ -175,7 +197,7 @@ contract WrisxToken {
         experts[msg.sender].initialized = 1;
         registerUser(msg.sender, _name);
 
-        onExpertRegistered(msg.sender, _name);
+        ExpertRegistered(msg.sender, _name);
 
         return true;
     }
@@ -186,7 +208,7 @@ contract WrisxToken {
         clients[msg.sender].initialized = 1;
         registerUser(msg.sender, _name);
 
-        onClientRegistered(msg.sender, _name);
+        ClientRegistered(msg.sender, _name);
 
         return true;
     }
@@ -197,7 +219,7 @@ contract WrisxToken {
         facilitators[msg.sender].initialized = 1;
         registerUser(msg.sender, _name);
 
-        onFacilitatorRegistered(msg.sender, _name);
+        FacilitatorRegistered(msg.sender, _name);
 
         return true;
     }
@@ -272,12 +294,12 @@ contract WrisxToken {
 
             researchItems[_uuid].numberOfPurchases = 1;
 
-            onBidExecuted(_bidId, _uuid);
+            BidExecuted(_bidId, _uuid);
         } else {
             researchItems[_uuid].numberOfPurchases = 0;
         }
 
-        onResearchDeposited(msg.sender, _uuid);
+        ResearchDeposited(msg.sender, _uuid);
 
         return _uuid;
     }
@@ -289,10 +311,10 @@ contract WrisxToken {
 
         // TODO
 
-        onResearchWithdrawn(msg.sender, uuid);
+        ResearchWithdrawn(msg.sender, uuid);
     }
 
-    function requestResearch(string uuid) public
+    function requestResearch(string uuid) public view
     returns(string) {
         require(researchItems[uuid].deposited == 1);
 
@@ -304,17 +326,6 @@ contract WrisxToken {
         require(researchItems[uuid].deposited == 1);
 
         return researchItems[uuid].price;
-    }
-
-    function getResearchExpert(string uuid) public
-    returns(string) {
-        require(researchItems[uuid].deposited == 1);
-
-        address expertAddress = researchItems[uuid].expertAddress;
-
-        return strConcat(addressToString(expertAddress),
-            strConcatToBytes("|", users[expertAddress].name)
-        );
     }
 
     function placeEnquiry(
@@ -339,7 +350,7 @@ contract WrisxToken {
         addBid(msg.sender, _enquiryId, _bidId1, _expert1, _price1);
         addBid(msg.sender, _enquiryId, _bidId2, _expert2, _price2);
 
-        onEnquiryPlaced(msg.sender, _enquiryId);
+        EnquiryPlaced(msg.sender, _enquiryId);
 
         return true;
     }
@@ -354,14 +365,14 @@ contract WrisxToken {
         researchItems[_uuid].numberOfPurchases += 1;
         clients[msg.sender].purchases[_uuid] = true;
 
-        onResearchPaid(msg.sender, _uuid);
+        ResearchPaid(msg.sender, _uuid);
     }
 
     function getResearch(string _uuid) public
     returns(string) {
         require(clients[msg.sender].purchases[_uuid] == true);
 
-        onResearchSent(msg.sender, _uuid);
+        ResearchSent(msg.sender, _uuid);
 
         return researchItems[_uuid].password;
     }
@@ -383,7 +394,7 @@ contract WrisxToken {
         researchItems[_uuid].ratingData.clientRatings[msg.sender].rate = _rate;
         researchItems[_uuid].ratingData.clientRatings[msg.sender].comment = _comment;
 
-        onResearchRatedByClient(msg.sender, _uuid, _rate);
+        ResearchRatedByClient(msg.sender, _uuid, _rate);
 
         return true;
     }
@@ -405,7 +416,7 @@ contract WrisxToken {
         researchItems[_uuid].ratingData.facilitatorRatings[msg.sender].rate = _rate;
         researchItems[_uuid].ratingData.facilitatorRatings[msg.sender].comment = _comment;
 
-        onResearchRatedByFacilitator(msg.sender, _uuid, _rate);
+        ResearchRatedByFacilitator(msg.sender, _uuid, _rate);
 
         return true;
     }
@@ -454,11 +465,11 @@ contract WrisxToken {
             escrowBalance += _price;
             users[_addr].balance -= _price;
 
-            onBidPlaced(_enquiryId, _bidId, _expert, _price);
+            BidPlaced(_enquiryId, _bidId, _expert, _price);
         }
     }
 
-    function strConcat(string _a, bytes _bb) internal constant
+    function strConcat(string _a, bytes _bb) internal pure
     returns (string) {
         bytes memory _ba = bytes(_a);
         string memory ab = new string(_ba.length + _bb.length);
@@ -470,7 +481,7 @@ contract WrisxToken {
         return string(bab);
     }
 
-    function strConcatToBytes(string _a, string _b) internal constant
+    function strConcatToBytes(string _a, string _b) internal pure
     returns (bytes) {
         bytes memory _ba = bytes(_a);
         bytes memory _bb = bytes(_b);
@@ -483,7 +494,7 @@ contract WrisxToken {
         return bab;
     }
 
-    function strConcatWithBytes(string _a, bytes _bb) internal constant
+    function strConcatWithBytes(string _a, bytes _bb) internal pure
     returns (bytes) {
         bytes memory _ba = bytes(_a);
         string memory ab = new string(_ba.length + _bb.length);
@@ -495,14 +506,14 @@ contract WrisxToken {
         return bab;
     }
 
-    function addressToString(address x) internal constant returns (string) {
+    function addressToString(address x) internal pure returns (string) {
         bytes memory b = new bytes(20);
         for (uint i = 0; i < 20; i++)
         b[i] = byte(uint8(uint(x) / (2**(8*(19 - i)))));
         return string(b);
     }
 
-    function stringToUint(string s) internal constant returns (uint result) {
+    function stringToUint(string s) internal pure returns (uint result) {
         bytes memory b = bytes(s);
         uint i;
         result = 0;
