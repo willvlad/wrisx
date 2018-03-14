@@ -21,31 +21,31 @@ contract WrisxToken {
         selfdestruct(owner);
     }
 
-    event ExpertRegistered(address indexed addr, string name);
+    event RegisterExpert(address indexed addr);
 
-    event ClientRegistered(address indexed addr, string name);
+    event RegisterClient(address indexed addr);
 
-    event FacilitatorRegistered(address indexed addr, string name);
+    event RegisterFacilitator(address indexed addr);
 
-    event TokensBought(address indexed user, uint tokens);
+    event BuyTokens(address indexed user, uint tokens);
 
-    event ResearchDeposited(address indexed expert, string indexed uuid);
+    event DepositResearch(address indexed expert, string indexed uuid);
 
-    event ResearchWithdrawn(address indexed expert, string indexed uuid);
+    event WithdrawResearch(address indexed expert, string indexed uuid);
 
-    event ResearchPaid(address indexed client, string indexed uuid);
+    event PayForResearch(address indexed client, string indexed uuid);
 
-    event EnquiryPlaced(address indexed client, uint indexed enquiryId);
+    event PlaceEnquiry(address indexed client, uint indexed enquiryId);
 
-    event BidPlaced(uint indexed enquiryId, uint indexed bidId, address indexed expert, uint price);
+    event PlaceBid(uint indexed enquiryId, uint indexed bidId, address indexed expert, uint price);
 
-    event BidExecuted(uint indexed bidId, string indexed researchUuid);
+    event ExecuteBid(uint indexed bidId, string indexed researchUuid);
 
-    event ResearchSent(address indexed client, string indexed uuid);
+    event SendResearch(address indexed client, string indexed uuid);
 
-    event ResearchRatedByClient(address indexed client, string indexed uuid, uint rate);
+    event RateResearchByClient(address indexed client, string indexed uuid, uint rate);
 
-    event ResearchRatedByFacilitator(address indexed client, string indexed uuid, uint rate);
+    event RateResearchByFacilitator(address indexed client, string indexed uuid, uint rate);
 
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
 
@@ -65,7 +65,6 @@ contract WrisxToken {
     }
 
     struct UserData {
-    string name;
     uint256 balance;
     uint initialized;
     string secret;
@@ -167,7 +166,7 @@ contract WrisxToken {
     }
 
     function() public payable {
-
+        revert();
     }
 
     function getOwner() public constant returns (address) {
@@ -188,7 +187,7 @@ contract WrisxToken {
         users[msg.sender].balance += numberOfTokens;
         users[owner].balance -= numberOfTokens;
 
-        TokensBought(msg.sender, numberOfTokens);
+        BuyTokens(msg.sender, numberOfTokens);
     }
 
     function getTokenPrice() public constant returns (uint8) {
@@ -217,35 +216,35 @@ contract WrisxToken {
         }
     }
 
-    function registerExpert(string _name, string _secret) public returns (bool success) {
+    function registerExpert(string _secret) public returns (bool success) {
         require(experts[msg.sender].initialized == 0);
 
         experts[msg.sender].initialized = 1;
-        registerUser(msg.sender, _name, _secret);
+        registerUser(msg.sender, _secret);
 
-        ExpertRegistered(msg.sender, _name);
+        RegisterExpert(msg.sender);
 
         return true;
     }
 
-    function registerClient(string _name, string _secret) public returns (bool success) {
+    function registerClient(string _secret) public returns (bool success) {
         require(clients[msg.sender].initialized == 0);
 
         clients[msg.sender].initialized = 1;
-        registerUser(msg.sender, _name, _secret);
+        registerUser(msg.sender, _secret);
 
-        ClientRegistered(msg.sender, _name);
+        RegisterClient(msg.sender);
 
         return true;
     }
 
-    function registerFacilitator(string _name, string _secret) public returns (bool success) {
+    function registerFacilitator(string _secret) public returns (bool success) {
         require(facilitators[msg.sender].initialized == 0);
 
         facilitators[msg.sender].initialized = 1;
-        registerUser(msg.sender, _name, _secret);
+        registerUser(msg.sender, _secret);
 
-        FacilitatorRegistered(msg.sender, _name);
+        RegisterFacilitator(msg.sender);
 
         return true;
     }
@@ -320,13 +319,13 @@ contract WrisxToken {
 
             researchItems[_uuid].numberOfPurchases = 1;
 
-            BidExecuted(_bidId, _uuid);
+            ExecuteBid(_bidId, _uuid);
         }
         else {
             researchItems[_uuid].numberOfPurchases = 0;
         }
 
-        ResearchDeposited(msg.sender, _uuid);
+        DepositResearch(msg.sender, _uuid);
 
         return _uuid;
     }
@@ -338,7 +337,7 @@ contract WrisxToken {
 
         // TODO
 
-        ResearchWithdrawn(msg.sender, uuid);
+        WithdrawResearch(msg.sender, uuid);
     }
 
     function requestResearch(string uuid) public view
@@ -377,7 +376,7 @@ contract WrisxToken {
         addBid(msg.sender, _enquiryId, _bidId1, _expert1, _price1);
         addBid(msg.sender, _enquiryId, _bidId2, _expert2, _price2);
 
-        EnquiryPlaced(msg.sender, _enquiryId);
+        PlaceEnquiry(msg.sender, _enquiryId);
 
         return true;
     }
@@ -392,14 +391,14 @@ contract WrisxToken {
         researchItems[_uuid].numberOfPurchases += 1;
         clients[msg.sender].purchases[_uuid] = true;
 
-        ResearchPaid(msg.sender, _uuid);
+        PayForResearch(msg.sender, _uuid);
     }
 
     function getResearch(string _uuid) public
     returns (string) {
         require(clients[msg.sender].purchases[_uuid] == true);
 
-        ResearchSent(msg.sender, _uuid);
+        SendResearch(msg.sender, _uuid);
 
         return researchItems[_uuid].password;
     }
@@ -421,7 +420,7 @@ contract WrisxToken {
         researchItems[_uuid].ratingData.clientRatings[msg.sender].rate = _rate;
         researchItems[_uuid].ratingData.clientRatings[msg.sender].comment = _comment;
 
-        ResearchRatedByClient(msg.sender, _uuid, _rate);
+        RateResearchByClient(msg.sender, _uuid, _rate);
 
         return true;
     }
@@ -443,7 +442,7 @@ contract WrisxToken {
         researchItems[_uuid].ratingData.facilitatorRatings[msg.sender].rate = _rate;
         researchItems[_uuid].ratingData.facilitatorRatings[msg.sender].comment = _comment;
 
-        ResearchRatedByFacilitator(msg.sender, _uuid, _rate);
+        RateResearchByFacilitator(msg.sender, _uuid, _rate);
 
         return true;
     }
@@ -472,10 +471,9 @@ contract WrisxToken {
         researchItems[_uuid].ratingData.numberOfFacilitators;
     }
 
-    function registerUser(address _addr, string _name, string _secret) internal {
+    function registerUser(address _addr, string _secret) internal {
         if (users[_addr].initialized == 0) {
             users[_addr].initialized = 1;
-            users[_addr].name = _name;
             users[_addr].secret = _secret;
         }
     }
@@ -499,7 +497,7 @@ contract WrisxToken {
             escrowBalance += _price;
             users[_addr].balance -= _price;
 
-            BidPlaced(_enquiryId, _bidId, _expert, _price);
+            PlaceBid(_enquiryId, _bidId, _expert, _price);
         }
     }
 }
