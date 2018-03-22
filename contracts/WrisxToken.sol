@@ -66,7 +66,6 @@ contract WrisxToken {
     struct UserData {
     uint256 balance;
     uint initialized;
-    string secret;
     }
 
     struct ClientData {
@@ -472,12 +471,6 @@ contract WrisxToken {
         if (users[_addr].initialized == 0) {
             users[_addr].initialized = 1;
         }
-    }
-
-    function getSecret() public constant
-    returns (string) {
-        require(users[msg.sender].initialized == 1);
-        return users[msg.sender].secret;
     }
 
     function addBid(address _addr, uint _enquiryId, uint _bidId, address _expert, uint256 _price) internal {
