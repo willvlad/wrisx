@@ -56,7 +56,6 @@ contract WrisxToken {
     struct Research {
     address expertAddress;
     uint256 price;
-    string password;
     string zipFileChecksumMD5;
     RatingData ratingData;
     uint deposited;
@@ -166,14 +165,14 @@ contract WrisxToken {
     }
 
     function() public payable {
-        revert();
+        buyTokens();
     }
 
-    function getOwner() public constant returns (address) {
+    function getOwner() public view returns (address) {
         return owner;
     }
 
-    function totalSupply() public constant returns (uint _totalSupply) {
+    function totalSupply() public view returns (uint _totalSupply) {
         return totalSupply;
     }
 
@@ -190,15 +189,15 @@ contract WrisxToken {
         BuyTokens(msg.sender, numberOfTokens);
     }
 
-    function getTokenPrice() public constant returns (uint8) {
+    function getTokenPrice() public view returns (uint8) {
         return tokenPriceEther;
     }
 
-    function getBalance() public constant returns (uint256 balance) {
+    function getBalance() public view returns (uint256 balance) {
         return balanceOf(msg.sender);
     }
 
-    function balanceOf(address _owner) public constant returns (uint256 balance) {
+    function balanceOf(address _owner) public view returns (uint256 balance) {
         return users[_owner].balance;
     }
 
@@ -216,58 +215,58 @@ contract WrisxToken {
         }
     }
 
-    function registerExpert(string _secret) public returns (bool success) {
+    function registerExpert() external returns (bool success) {
         require(experts[msg.sender].initialized == 0);
 
         experts[msg.sender].initialized = 1;
-        registerUser(msg.sender, _secret);
+        registerUser(msg.sender);
 
         RegisterExpert(msg.sender);
 
         return true;
     }
 
-    function registerClient(string _secret) public returns (bool success) {
+    function registerClient() external returns (bool success) {
         require(clients[msg.sender].initialized == 0);
 
         clients[msg.sender].initialized = 1;
-        registerUser(msg.sender, _secret);
+        registerUser(msg.sender);
 
         RegisterClient(msg.sender);
 
         return true;
     }
 
-    function registerFacilitator(string _secret) public returns (bool success) {
+    function registerFacilitator() external returns (bool success) {
         require(facilitators[msg.sender].initialized == 0);
 
         facilitators[msg.sender].initialized = 1;
-        registerUser(msg.sender, _secret);
+        registerUser(msg.sender);
 
         RegisterFacilitator(msg.sender);
 
         return true;
     }
 
-    function getExpertInitialized(address addr) public constant returns (uint init) {
+    function getExpertInitialized(address addr) public view returns (uint init) {
         return experts[addr].initialized;
     }
 
-    function getClientInitialized(address addr) public constant returns (uint init) {
+    function getClientInitialized(address addr) public view returns (uint init) {
         return clients[addr].initialized;
     }
 
-    function getFacilitatorInitialized(address addr) public constant returns (uint init) {
+    function getFacilitatorInitialized(address addr) public view returns (uint init) {
         return facilitators[addr].initialized;
     }
 
-    function getExpertTotalRating(address expertAddress) public constant returns (uint totalRating) {
+    function getExpertTotalRating(address expertAddress) public view returns (uint totalRating) {
         require(experts[expertAddress].initialized == 1);
 
         return experts[expertAddress].totalRating;
     }
 
-    function getExpertRating(address expertAddress) public constant
+    function getExpertRating(address expertAddress) public view
     returns (uint256) {
         require(experts[expertAddress].initialized == 1);
 
@@ -277,12 +276,11 @@ contract WrisxToken {
     function depositResearch(
     uint256 _price,
     string _uuid,
-    string _password,
     string _zipFileChecksumMD5,
 
     address _clientAddress,
     uint _enquiryId,
-    uint _bidId) public
+    uint _bidId) external
     returns (string) {
         require(researchItems[_uuid].deposited == 0);
         require(experts[msg.sender].initialized == 1);
@@ -290,7 +288,6 @@ contract WrisxToken {
 
         researchItems[_uuid].expertAddress = msg.sender;
         researchItems[_uuid].price = _price;
-        researchItems[_uuid].password = _password;
         researchItems[_uuid].zipFileChecksumMD5 = _zipFileChecksumMD5;
         researchItems[_uuid].deposited = 1;
         researchItems[_uuid].withdrawn = 0;
@@ -400,7 +397,7 @@ contract WrisxToken {
 
         SendResearch(msg.sender, _uuid);
 
-        return researchItems[_uuid].password;
+        return "abcd";
     }
 
     function rateResearchByClient(string _uuid, uint _rate, string _comment) public
@@ -471,10 +468,9 @@ contract WrisxToken {
         researchItems[_uuid].ratingData.numberOfFacilitators;
     }
 
-    function registerUser(address _addr, string _secret) internal {
+    function registerUser(address _addr) internal {
         if (users[_addr].initialized == 0) {
             users[_addr].initialized = 1;
-            users[_addr].secret = _secret;
         }
     }
 

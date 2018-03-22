@@ -1,0 +1,21 @@
+1) + Authentication
+2) + Add linkedin profile field to mysql user table
+3) + Add website field to mysql client table
+4) Add video field to research
+5) Video and pdf can be uploaded both or one of them
+6) + Remove price field from mysql research table and from the contract
+7) Facilitators (initially 2, later more) must approve research before it becomes available to client
+8) Add ‘waiting for facilitators approval’ state to lifecycle of research
+9) Mining wait spinner
+10) After research has been approved by facilitators expert gets tokens (configurable number of tokens)
+11) After research has been approved or rejected by facilitator he gets tokens (configurable number of tokens)
+12) ERC20 contract should create mintable tokens; this will allow us to mint more tokens to pay experts for researches
+13) Verification of LinkedIn profile of experts and facilitators (initially can be done manually)
+14) + Remove ‘secret’ field from everywhere
+15) + Remove password of research from contract
+16) Remove token generation functionality from WrisxToken
+
+17) WrisxToken contract should be renamed to Wrisx
+18) New WrisxToken contract should be pure ERC20 contract; its tokens should be used by Wrisx contract
+
+19) Check how to store files in Azure (blob storage?)
